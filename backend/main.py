@@ -10,9 +10,20 @@ from block_types.string_builder_block import StringBuilderBlock
 from api_schemas import API_SCHEMAS
 import collections
 import json
+from db import mongodb
+from supabase_client import supabase_service
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for all routes
+
+# Initialize database connections
+try:
+    mongodb.connect()
+    supabase_service.initialize()
+except Exception as e:
+    print(f"Failed to initialize services: {e}")
+    # Continue anyway for development
 
 # ==========================================
 # PART 1: API Block Functionality & Execution Engine
@@ -100,6 +111,41 @@ def execute_graph(start_blocks: list[Block], method: str = 'bfs'):
 
 # In-memory storage for the current project
 current_project = Project("Demo Project")
+
+def get_user_id_from_request():
+    """Extract user_id from request headers or body"""
+    # Try header first
+    user_id = request.headers.get('X-User-ID')
+
+    # Try request body
+    if not user_id and request.json:
+        user_id = request.json.get('user_id')
+
+    return user_id
+
+def ensure_user_exists(user_id):
+    """
+    Lazy user creation: If user_id doesn't exist in MongoDB,
+    fetch from Supabase and create profile.
+    """
+    user = mongodb.get_user_by_supabase_id(user_id)
+
+    if not user:
+        # User doesn't exist in MongoDB, try to create from Supabase
+        supabase_user = supabase_service.get_user_by_id(user_id)
+
+        if supabase_user:
+            # Create user profile
+            user = mongodb.create_user(
+                supabase_user_id=user_id,
+                email=supabase_user.email,
+                full_name=supabase_user.user_metadata.get('full_name', '') if supabase_user.user_metadata else ''
+            )
+            print(f"✓ Auto-created user profile for {user_id}")
+        else:
+            return None
+
+    return user
 
 @app.route('/api/execute', methods=['POST'])
 def run_graph():
@@ -394,11 +440,98 @@ def load_project():
             json_str = json.dumps(json_data)
         else:
             json_str = json_data
-            
+
         current_project = Project.from_json(json_str)
         return jsonify({"status": "loaded", "project_name": current_project.name})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# ==========================================
+# PART 3: Authentication Endpoints
+# ==========================================
+
+@app.route('/api/auth/create-profile', methods=['POST'])
+def create_profile():
+    """
+    Create user profile in MongoDB after Supabase signup.
+    Expects JSON: { "supabase_user_id": "...", "email": "...", "full_name": "..." }
+    """
+    try:
+        data = request.json
+        supabase_user_id = data.get('supabase_user_id')
+        email = data.get('email')
+        full_name = data.get('full_name', '')
+
+        if not supabase_user_id or not email:
+            return jsonify({"error": "supabase_user_id and email are required"}), 400
+
+        # Check if user already exists
+        existing_user = mongodb.get_user_by_supabase_id(supabase_user_id)
+        if existing_user:
+            return jsonify({
+                "success": True,
+                "user": existing_user,
+                "message": "User profile already exists"
+            }), 200
+
+        # Create new user profile
+        user = mongodb.create_user(supabase_user_id, email, full_name)
+
+        return jsonify({
+            "success": True,
+            "user": user
+        }), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/auth/update-last-login', methods=['POST'])
+def update_last_login():
+    """
+    Update user's last login timestamp.
+    Expects JSON: { "supabase_user_id": "..." }
+    """
+    try:
+        data = request.json
+        supabase_user_id = data.get('supabase_user_id')
+
+        if not supabase_user_id:
+            return jsonify({"error": "supabase_user_id is required"}), 400
+
+        result = mongodb.update_last_login(supabase_user_id)
+
+        if result.matched_count == 0:
+            # User doesn't exist, try lazy creation
+            user = ensure_user_exists(supabase_user_id)
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user():
+    """
+    Get current user profile.
+    Expects header: X-User-ID
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID not provided"}), 401
+
+        user = ensure_user_exists(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        return jsonify(user), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # --- Demo Setup ---
 def setup_demo_project():
