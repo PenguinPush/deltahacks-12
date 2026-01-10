@@ -1,0 +1,259 @@
+{
+  "id": "exec_xyz789abc123",
+  "workflowId": "wf_abc123def456",
+  "workflowName": "Order Processing Workflow",
+  "workflowVersion": "1.0.0",
+  "status": "success",
+  "triggerType": "webhook",
+  "triggerData": {
+    "orderId": "ORD-12345",
+    "customerId": "CUST-789",
+    "customerEmail": "customer@example.com",
+    "items": ["ITEM-1", "ITEM-2"],
+    "totalAmount": 9999
+  },
+  "startedAt": "2026-01-10T15:30:00.000Z",
+  "completedAt": "2026-01-10T15:30:45.123Z",
+  "duration": 45123,
+  "nodeResults": [
+    {
+      "nodeId": "trigger-1",
+      "nodeName": "Order Webhook",
+      "nodeType": "webhook-trigger",
+      "executionType": "trigger",
+      "status": "success",
+      "startedAt": "2026-01-10T15:30:00.000Z",
+      "completedAt": "2026-01-10T15:30:00.234Z",
+      "duration": 234,
+      "input": null,
+      "output": {
+        "orderId": "ORD-12345",
+        "customerId": "CUST-789",
+        "customerEmail": "customer@example.com",
+        "items": ["ITEM-1", "ITEM-2"],
+        "totalAmount": 9999
+      },
+      "error": null,
+      "retries": 0
+    },
+    {
+      "nodeId": "api-1",
+      "nodeName": "Process Payment",
+      "nodeType": "stripe-charge",
+      "executionType": "action",
+      "status": "success",
+      "startedAt": "2026-01-10T15:30:00.500Z",
+      "completedAt": "2026-01-10T15:30:02.789Z",
+      "duration": 2289,
+      "input": {
+        "amount": 9999,
+        "currency": "usd",
+        "customer": "CUST-789",
+        "description": "Order ORD-12345"
+      },
+      "output": {
+        "chargeId": "ch_3AbC123DeF456GhI",
+        "status": "succeeded",
+        "amount": 9999,
+        "currency": "usd",
+        "created": 1641823802,
+        "paid": true,
+        "receipt_url": "https://pay.stripe.com/receipts/123"
+      },
+      "error": null,
+      "retries": 0,
+      "apiResponse": {
+        "statusCode": 200,
+        "headers": {
+          "content-type": "application/json",
+          "request-id": "req_AbC123DeF456"
+        },
+        "body": {
+          "id": "ch_3AbC123DeF456GhI",
+          "object": "charge",
+          "status": "succeeded"
+        }
+      }
+    },
+    {
+      "nodeId": "condition-1",
+      "nodeName": "Check Payment Success",
+      "nodeType": "if-else",
+      "executionType": "control",
+      "status": "success",
+      "startedAt": "2026-01-10T15:30:03.000Z",
+      "completedAt": "2026-01-10T15:30:03.050Z",
+      "duration": 50,
+      "input": {
+        "paymentStatus": "succeeded"
+      },
+      "output": {
+        "result": true,
+        "branchTaken": "true"
+      },
+      "error": null,
+      "retries": 0
+    },
+    {
+      "nodeId": "api-2",
+      "nodeName": "Update Inventory",
+      "nodeType": "mongodb-update",
+      "executionType": "action",
+      "status": "success",
+      "startedAt": "2026-01-10T15:30:03.200Z",
+      "completedAt": "2026-01-10T15:30:04.567Z",
+      "duration": 1367,
+      "input": {
+        "dataSource": "Cluster0",
+        "database": "ecommerce",
+        "collection": "inventory",
+        "filter": {
+          "_id": { "$in": ["ITEM-1", "ITEM-2"] }
+        },
+        "update": {
+          "$inc": { "quantity": -1 }
+        }
+      },
+      "output": {
+        "matchedCount": 2,
+        "modifiedCount": 2
+      },
+      "error": null,
+      "retries": 0,
+      "apiResponse": {
+        "statusCode": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "matchedCount": 2,
+          "modifiedCount": 2
+        }
+      }
+    },
+    {
+      "nodeId": "api-3",
+      "nodeName": "Send Confirmation Email",
+      "nodeType": "sendgrid-send",
+      "executionType": "action",
+      "status": "success",
+      "startedAt": "2026-01-10T15:30:05.000Z",
+      "completedAt": "2026-01-10T15:30:06.234Z",
+      "duration": 1234,
+      "input": {
+        "personalizations": [
+          {
+            "to": [{ "email": "customer@example.com" }],
+            "dynamic_template_data": {
+              "orderId": "ORD-12345",
+              "totalAmount": 9999,
+              "chargeId": "ch_3AbC123DeF456GhI"
+            }
+          }
+        ],
+        "from": { "email": "orders@example.com", "name": "Example Shop" },
+        "template_id": "d-xxxxxxxxxxxxx"
+      },
+      "output": {
+        "messageId": "msg_AbCdEfGhIjKlMnOp"
+      },
+      "error": null,
+      "retries": 0,
+      "apiResponse": {
+        "statusCode": 202,
+        "headers": {
+          "x-message-id": "msg_AbCdEfGhIjKlMnOp"
+        },
+        "body": ""
+      }
+    },
+    {
+      "nodeId": "output-1",
+      "nodeName": "Workflow Response",
+      "nodeType": "workflow-output",
+      "executionType": "output",
+      "status": "success",
+      "startedAt": "2026-01-10T15:30:06.500Z",
+      "completedAt": "2026-01-10T15:30:06.550Z",
+      "duration": 50,
+      "input": {
+        "success": true,
+        "orderId": "ORD-12345",
+        "chargeId": "ch_3AbC123DeF456GhI",
+        "emailSent": "msg_AbCdEfGhIjKlMnOp",
+        "inventoryUpdated": 2
+      },
+      "output": {
+        "response": {
+          "success": true,
+          "orderId": "ORD-12345",
+          "chargeId": "ch_3AbC123DeF456GhI",
+          "emailSent": "msg_AbCdEfGhIjKlMnOp",
+          "inventoryUpdated": 2
+        },
+        "statusCode": 200
+      },
+      "error": null,
+      "retries": 0
+    }
+  ],
+  "executionPath": [
+    "trigger-1",
+    "api-1",
+    "condition-1",
+    "api-2",
+    "api-3",
+    "output-1"
+  ],
+  "skippedNodes": [
+    {
+      "nodeId": "transform-1",
+      "nodeName": "Format Error Response",
+      "reason": "Condition 'Check Payment Success' evaluated to true, false branch skipped"
+    },
+    {
+      "nodeId": "api-4",
+      "nodeName": "Notify Admin",
+      "reason": "Parent node 'transform-1' was skipped"
+    }
+  ],
+  "finalOutput": {
+    "success": true,
+    "orderId": "ORD-12345",
+    "chargeId": "ch_3AbC123DeF456GhI",
+    "emailSent": "msg_AbCdEfGhIjKlMnOp",
+    "inventoryUpdated": 2
+  },
+  "metrics": {
+    "totalNodes": 8,
+    "executedNodes": 6,
+    "skippedNodes": 2,
+    "failedNodes": 0,
+    "totalApiCalls": 3,
+    "totalDataTransforms": 0,
+    "averageNodeDuration": 832.17,
+    "longestNode": {
+      "nodeId": "api-1",
+      "nodeName": "Process Payment",
+      "duration": 2289
+    }
+  },
+  "billing": {
+    "apiCallsUsed": 3,
+    "executionTimeMs": 45123,
+    "dataProcessedBytes": 2048
+  },
+  "webhookResponse": {
+    "statusCode": 200,
+    "body": {
+      "success": true,
+      "orderId": "ORD-12345",
+      "chargeId": "ch_3AbC123DeF456GhI",
+      "emailSent": "msg_AbCdEfGhIjKlMnOp",
+      "inventoryUpdated": 2
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

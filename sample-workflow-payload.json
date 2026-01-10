@@ -1,0 +1,331 @@
+{
+  "name": "Order Processing Workflow",
+  "description": "Complete order workflow with payment, inventory check, and email notification",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "webhook-trigger",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "Order Webhook",
+        "nodeType": "api",
+        "executionType": "trigger",
+        "templateId": "webhook-trigger",
+        "method": "POST",
+        "endpoint": "/webhook/order-received",
+        "webhookConfig": {
+          "method": "POST",
+          "authentication": "api_key",
+          "allowedOrigins": ["https://shop.example.com"]
+        },
+        "outputFields": [
+          { "id": "orderId", "name": "Order ID", "type": "string", "description": "Unique order identifier" },
+          { "id": "customerId", "name": "Customer ID", "type": "string", "description": "Customer identifier" },
+          { "id": "items", "name": "Order Items", "type": "array", "description": "List of items" },
+          { "id": "totalAmount", "name": "Total Amount", "type": "number", "description": "Order total" }
+        ]
+      }
+    },
+    {
+      "id": "api-1",
+      "type": "stripe-charge",
+      "position": { "x": 400, "y": 100 },
+      "data": {
+        "label": "Process Payment",
+        "nodeType": "api",
+        "executionType": "action",
+        "templateId": "stripe-charge",
+        "method": "POST",
+        "endpoint": "/v1/charges",
+        "headers": [
+          { "key": "Authorization", "value": "Bearer {{credentials.stripe.apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "amount": "{{trigger-1.totalAmount}}",
+          "currency": "usd",
+          "customer": "{{trigger-1.customerId}}",
+          "description": "Order {{trigger-1.orderId}}"
+        },
+        "credentials": {
+          "apiKey": "sk_test_xxxxxxxxxxxxx"
+        },
+        "outputFields": [
+          { "id": "chargeId", "name": "Charge ID", "type": "string", "description": "Stripe charge ID" },
+          { "id": "status", "name": "Status", "type": "string", "description": "Payment status" },
+          { "id": "amount", "name": "Amount", "type": "number", "description": "Charged amount" }
+        ],
+        "errorHandling": {
+          "strategy": "retry",
+          "maxRetries": 3,
+          "retryDelay": 1000
+        }
+      }
+    },
+    {
+      "id": "condition-1",
+      "type": "if-else",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "label": "Check Payment Success",
+        "nodeType": "condition",
+        "executionType": "control",
+        "templateId": "if-else",
+        "conditions": [
+          {
+            "field": "{{api-1.status}}",
+            "operator": "equals",
+            "value": "succeeded",
+            "logic": "AND"
+          }
+        ],
+        "outputFields": [
+          { "id": "result", "name": "Condition Result", "type": "boolean", "description": "True if payment succeeded" }
+        ]
+      }
+    },
+    {
+      "id": "api-2",
+      "type": "mongodb-update",
+      "position": { "x": 1000, "y": 50 },
+      "data": {
+        "label": "Update Inventory",
+        "nodeType": "api",
+        "executionType": "action",
+        "templateId": "mongodb-update",
+        "method": "POST",
+        "endpoint": "/api/data/v1/action/updateMany",
+        "headers": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "api-key", "value": "{{credentials.mongodb.apiKey}}" }
+        ],
+        "body": {
+          "dataSource": "Cluster0",
+          "database": "ecommerce",
+          "collection": "inventory",
+          "filter": {
+            "_id": { "$in": "{{trigger-1.items}}" }
+          },
+          "update": {
+            "$inc": { "quantity": -1 }
+          }
+        },
+        "credentials": {
+          "apiKey": "mongodb_api_key_xxxxx"
+        },
+        "outputFields": [
+          { "id": "matchedCount", "name": "Matched Count", "type": "number", "description": "Documents matched" },
+          { "id": "modifiedCount", "name": "Modified Count", "type": "number", "description": "Documents updated" }
+        ]
+      }
+    },
+    {
+      "id": "api-3",
+      "type": "sendgrid-send",
+      "position": { "x": 1300, "y": 50 },
+      "data": {
+        "label": "Send Confirmation Email",
+        "nodeType": "api",
+        "executionType": "action",
+        "templateId": "sendgrid-send",
+        "method": "POST",
+        "endpoint": "/v3/mail/send",
+        "headers": [
+          { "key": "Authorization", "value": "Bearer {{credentials.sendgrid.apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "personalizations": [
+            {
+              "to": [{ "email": "{{trigger-1.customerEmail}}" }],
+              "dynamic_template_data": {
+                "orderId": "{{trigger-1.orderId}}",
+                "totalAmount": "{{api-1.amount}}",
+                "chargeId": "{{api-1.chargeId}}"
+              }
+            }
+          ],
+          "from": { "email": "orders@example.com", "name": "Example Shop" },
+          "template_id": "d-xxxxxxxxxxxxx"
+        },
+        "credentials": {
+          "apiKey": "SG.xxxxxxxxxxxxxxx"
+        },
+        "outputFields": [
+          { "id": "messageId", "name": "Message ID", "type": "string", "description": "Email message ID" }
+        ]
+      }
+    },
+    {
+      "id": "transform-1",
+      "type": "map-data",
+      "position": { "x": 1000, "y": 200 },
+      "data": {
+        "label": "Format Error Response",
+        "nodeType": "transform",
+        "executionType": "transform",
+        "templateId": "map-data",
+        "mappings": [
+          {
+            "source": "{{trigger-1.orderId}}",
+            "target": "orderId",
+            "transform": "value"
+          },
+          {
+            "source": "{{api-1.status}}",
+            "target": "paymentStatus",
+            "transform": "value"
+          },
+          {
+            "source": "'Payment failed for order'",
+            "target": "errorMessage",
+            "transform": "value"
+          },
+          {
+            "source": "new Date().toISOString()",
+            "target": "timestamp",
+            "transform": "expression"
+          }
+        ],
+        "outputFields": [
+          { "id": "output", "name": "Mapped Data", "type": "object", "description": "Transformed error data" }
+        ]
+      }
+    },
+    {
+      "id": "api-4",
+      "type": "slack-message",
+      "position": { "x": 1300, "y": 200 },
+      "data": {
+        "label": "Notify Admin",
+        "nodeType": "api",
+        "executionType": "action",
+        "templateId": "slack-message",
+        "method": "POST",
+        "endpoint": "/api/chat.postMessage",
+        "headers": [
+          { "key": "Authorization", "value": "Bearer {{credentials.slack.botToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "channel": "#order-failures",
+          "text": "Payment failed for order {{transform-1.output.orderId}}",
+          "blocks": [
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*Payment Failed*\nOrder: {{transform-1.output.orderId}}\nStatus: {{transform-1.output.paymentStatus}}\nTime: {{transform-1.output.timestamp}}"
+              }
+            }
+          ]
+        },
+        "credentials": {
+          "botToken": "xoxb-xxxxxxxxxx"
+        },
+        "outputFields": [
+          { "id": "ts", "name": "Timestamp", "type": "string", "description": "Message timestamp" },
+          { "id": "channel", "name": "Channel", "type": "string", "description": "Channel ID" }
+        ]
+      }
+    },
+    {
+      "id": "output-1",
+      "type": "workflow-output",
+      "position": { "x": 1600, "y": 100 },
+      "data": {
+        "label": "Workflow Response",
+        "nodeType": "output",
+        "executionType": "output",
+        "templateId": "workflow-output",
+        "responseFormat": "json",
+        "statusCode": 200,
+        "outputMapping": {
+          "success": "{{condition-1.result}}",
+          "orderId": "{{trigger-1.orderId}}",
+          "chargeId": "{{api-1.chargeId}}",
+          "emailSent": "{{api-3.messageId}}",
+          "inventoryUpdated": "{{api-2.modifiedCount}}"
+        },
+        "outputFields": [
+          { "id": "response", "name": "Final Response", "type": "object", "description": "Workflow result" }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "trigger-1",
+      "target": "api-1",
+      "sourceHandle": "output",
+      "targetHandle": "input",
+      "type": "default"
+    },
+    {
+      "id": "e2",
+      "source": "api-1",
+      "target": "condition-1",
+      "sourceHandle": "output",
+      "targetHandle": "input",
+      "type": "default"
+    },
+    {
+      "id": "e3",
+      "source": "condition-1",
+      "target": "api-2",
+      "sourceHandle": "true",
+      "targetHandle": "input",
+      "type": "default",
+      "label": "Success"
+    },
+    {
+      "id": "e4",
+      "source": "api-2",
+      "target": "api-3",
+      "sourceHandle": "output",
+      "targetHandle": "input",
+      "type": "default"
+    },
+    {
+      "id": "e5",
+      "source": "api-3",
+      "target": "output-1",
+      "sourceHandle": "output",
+      "targetHandle": "input",
+      "type": "default"
+    },
+    {
+      "id": "e6",
+      "source": "condition-1",
+      "target": "transform-1",
+      "sourceHandle": "false",
+      "targetHandle": "input",
+      "type": "default",
+      "label": "Failed"
+    },
+    {
+      "id": "e7",
+      "source": "transform-1",
+      "target": "api-4",
+      "sourceHandle": "output",
+      "targetHandle": "input",
+      "type": "default"
+    },
+    {
+      "id": "e8",
+      "source": "api-4",
+      "target": "output-1",
+      "sourceHandle": "output",
+      "targetHandle": "input",
+      "type": "default"
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-01-10T10:30:00.000Z",
+    "updatedAt": "2026-01-10T10:30:00.000Z",
+    "tags": ["e-commerce", "payment", "automation"],
+    "category": "sales"
+  }
+}

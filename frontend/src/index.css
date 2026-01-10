@@ -1,0 +1,397 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* React Flow base styles */
+@import 'reactflow/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html, body, #root {
+    @apply h-full w-full m-0 p-0 bg-app-bg text-text-primary font-sans antialiased;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-app-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border-hover;
+  }
+
+  /* Selection color */
+  ::selection {
+    @apply bg-accent-blue/30 text-text-primary;
+  }
+}
+
+/* React Flow custom overrides */
+@layer components {
+  .react-flow__pane {
+    @apply cursor-grab;
+  }
+
+  .react-flow__pane:active {
+    @apply cursor-grabbing;
+  }
+
+  .react-flow__node {
+    @apply cursor-grab;
+  }
+
+  .react-flow__node:active {
+    @apply cursor-grabbing;
+  }
+
+  .react-flow__node.selected {
+    @apply outline-none;
+  }
+
+  .react-flow__handle {
+    @apply w-3 h-3 rounded-full border-2 border-node-handle bg-app-component transition-all duration-150;
+  }
+
+  .react-flow__handle:hover {
+    @apply border-accent-blue bg-accent-blue scale-125;
+  }
+
+  .react-flow__handle-left {
+    @apply -left-1.5;
+  }
+
+  .react-flow__handle-right {
+    @apply -right-1.5;
+  }
+
+  .react-flow__handle-top {
+    @apply -top-1.5;
+  }
+
+  .react-flow__handle-bottom {
+    @apply -bottom-1.5;
+  }
+
+  .react-flow__handle.connecting,
+  .react-flow__handle.connectingto {
+    @apply border-accent-blue bg-accent-blue;
+  }
+
+  .react-flow__handle.valid {
+    @apply border-status-success bg-status-success;
+  }
+
+  .react-flow__edge-path {
+    @apply stroke-node-handle stroke-2;
+    stroke-dasharray: 4 4;
+  }
+
+  .react-flow__edge.selected .react-flow__edge-path,
+  .react-flow__edge:hover .react-flow__edge-path {
+    @apply stroke-accent-blue stroke-[3px];
+    stroke-dasharray: none;
+  }
+
+  .react-flow__connection-line {
+    @apply stroke-accent-blue stroke-2;
+    stroke-dasharray: 4 4;
+  }
+
+  .react-flow__background {
+    @apply bg-app-bg;
+  }
+
+  .react-flow__background pattern circle {
+    fill: #3A3A3A;
+  }
+
+  .react-flow__minimap {
+    @apply bg-app-panel border border-border rounded-lg overflow-hidden;
+  }
+
+  .react-flow__minimap-mask {
+    fill: rgba(10, 10, 10, 0.8);
+  }
+
+  .react-flow__controls {
+    @apply bg-app-panel border border-border rounded-lg shadow-dropdown overflow-hidden;
+  }
+
+  .react-flow__controls-button {
+    @apply bg-transparent border-none text-text-secondary hover:bg-app-component hover:text-text-primary transition-colors duration-150;
+  }
+
+  .react-flow__controls-button svg {
+    @apply fill-current;
+  }
+
+  .react-flow__attribution {
+    @apply hidden;
+  }
+}
+
+/* Custom node styles */
+@layer components {
+  .workflow-node {
+    @apply rounded-lg shadow-node border border-gray-600/50 min-w-[200px] transition-all duration-150;
+    background: rgba(38, 38, 38, 0.85);
+    backdrop-filter: blur(8px);
+  }
+
+  .workflow-node:hover {
+    @apply shadow-node-hover border-gray-500/70;
+    background: rgba(48, 48, 48, 0.9);
+  }
+
+  .workflow-node.selected {
+    @apply border-2 border-accent-blue shadow-node-selected;
+  }
+
+  .workflow-node-header {
+    @apply flex items-center gap-2 px-3 py-3;
+  }
+
+  .workflow-node-content {
+    @apply px-3 pb-3;
+  }
+
+  .workflow-node-icon {
+    @apply w-6 h-6 rounded flex items-center justify-center;
+  }
+}
+
+/* Panel styles */
+@layer components {
+  .panel {
+    @apply bg-app-panel border-border;
+  }
+
+  .panel-section {
+    @apply border-b border-border p-4;
+  }
+
+  .panel-section:last-child {
+    @apply border-b-0;
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between px-4 py-3 border-b border-border;
+  }
+
+  .panel-title {
+    @apply text-tiny font-medium text-text-tertiary uppercase tracking-wider;
+  }
+}
+
+/* Form elements */
+@layer components {
+  .form-label {
+    @apply block text-small font-medium text-text-secondary mb-1.5;
+  }
+
+  .form-input {
+    @apply w-full bg-app-input border border-border rounded-md px-3 py-2 text-body text-text-primary placeholder-text-tertiary transition-all duration-150;
+  }
+
+  .form-input:focus {
+    @apply outline-none border-accent-blue ring-2 ring-accent-blue/20;
+  }
+
+  .form-input:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .form-select {
+    @apply form-input appearance-none cursor-pointer pr-10 bg-no-repeat bg-right;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236A6A6A'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-size: 20px;
+    background-position: right 8px center;
+  }
+
+  .form-textarea {
+    @apply form-input resize-none min-h-[80px];
+  }
+}
+
+/* Button variants */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-label font-medium rounded-md transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-blue text-white hover:bg-accent-blue-hover active:bg-accent-blue-active;
+  }
+
+  .btn-secondary {
+    @apply btn bg-transparent border border-border text-text-primary hover:bg-app-component hover:border-border-hover;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-text-secondary hover:text-text-primary hover:bg-app-component;
+  }
+
+  .btn-danger {
+    @apply btn bg-transparent border border-status-error/50 text-status-error hover:bg-status-error/10;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-app-component transition-colors duration-150;
+  }
+}
+
+/* Card styles */
+@layer components {
+  .card {
+    @apply bg-app-panel border border-border-subtle rounded-lg shadow-card overflow-hidden transition-all duration-150;
+  }
+
+  .card:hover {
+    @apply border-border;
+  }
+
+  .card-thumbnail {
+    @apply h-[180px] bg-gradient-to-b from-app-panel to-app-bg flex items-center justify-center;
+  }
+
+  .card-content {
+    @apply p-4;
+  }
+}
+
+/* Badge styles */
+@layer components {
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-sm text-tiny font-medium;
+  }
+
+  .badge-simple {
+    @apply badge bg-status-success/20 text-status-success;
+  }
+
+  .badge-medium {
+    @apply badge bg-status-warning/20 text-status-warning;
+  }
+
+  .badge-complex {
+    @apply badge bg-status-error/20 text-status-error;
+  }
+}
+
+/* Modal styles */
+@layer components {
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in;
+  }
+
+  .modal-container {
+    @apply bg-app-panel border border-border-subtle rounded-lg shadow-modal max-w-xl w-full mx-4 max-h-[90vh] overflow-hidden animate-slide-in;
+  }
+
+  .modal-header {
+    @apply flex items-center justify-between px-6 py-4 border-b border-border;
+  }
+
+  .modal-title {
+    @apply text-heading text-text-primary;
+  }
+
+  .modal-body {
+    @apply p-6 overflow-y-auto;
+  }
+
+  .modal-footer {
+    @apply flex items-center justify-end gap-3 px-6 py-4 border-t border-border;
+  }
+}
+
+/* Dropdown styles */
+@layer components {
+  .dropdown-menu {
+    @apply absolute z-50 bg-app-component border border-border rounded-md shadow-dropdown py-1 min-w-[200px] animate-slide-in;
+  }
+
+  .dropdown-item {
+    @apply flex items-center gap-2 px-3 py-2 text-body text-text-secondary hover:bg-app-panel hover:text-text-primary cursor-pointer transition-colors duration-150;
+  }
+
+  .dropdown-item.active {
+    @apply bg-accent-blue/10 text-accent-blue;
+  }
+
+  .dropdown-divider {
+    @apply border-t border-border my-1;
+  }
+}
+
+/* Tooltip styles */
+@layer components {
+  .tooltip {
+    @apply absolute z-50 px-2 py-1 text-small text-text-primary bg-app-component border border-border rounded-md shadow-dropdown whitespace-nowrap animate-fade-in;
+  }
+}
+
+/* Activity log styles */
+@layer components {
+  .activity-entry {
+    @apply flex items-start gap-3 px-4 py-3 border-b border-border-subtle hover:bg-app-component/50 transition-colors duration-150;
+  }
+
+  .activity-entry:last-child {
+    @apply border-b-0;
+  }
+
+  .activity-icon {
+    @apply w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0;
+  }
+
+  .activity-content {
+    @apply flex-1 min-w-0;
+  }
+
+  .activity-message {
+    @apply text-body text-text-primary;
+  }
+
+  .activity-time {
+    @apply text-small text-text-tertiary mt-0.5;
+  }
+}
+
+/* Skeleton loader */
+@layer components {
+  .skeleton {
+    @apply bg-app-component rounded animate-pulse;
+  }
+}
+
+/* Focus ring utility */
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-app-bg;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-flow-line {
+    stroke-dasharray: 12 12;
+    animation: flow 1s linear infinite;
+  }
+}

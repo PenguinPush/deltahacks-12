@@ -1,0 +1,145 @@
+import axios, { type AxiosInstance, type AxiosError, type AxiosRequestConfig } from 'axios';
+import type { ApiResponse, ApiError } from '@/types';
+
+/**
+ * API Configuration
+ */
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
+
+/**
+ * Create Axios instance with default configuration
+ */
+export const apiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Request interceptor for adding auth token
+ */
+apiClient.interceptors.request.use(
+  (config) => {
+    // TODO: Add authentication token from auth store
+    // const token = useAuthStore.getState().token;
+    // if (token) {
+    //   config.headers.Authorization = `Bearer ${token}`;
+    // }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Response interceptor for handling errors
+ */
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<ApiError>) => {
+    // Handle specific error cases
+    if (error.response) {
+      const { status, data } = error.response;
+
+      switch (status) {
+        case 401:
+          // TODO: Handle unauthorized - redirect to login or refresh token
+          console.error('Unauthorized - session may have expired');
+          break;
+        case 403:
+          console.error('Forbidden - insufficient permissions');
+          break;
+        case 404:
+          console.error('Resource not found');
+          break;
+        case 429:
+          console.error('Rate limited - too many requests');
+          break;
+        case 500:
+          console.error('Server error');
+          break;
+      }
+
+      // Return a standardized error
+      const apiError: ApiError = {
+        code: data?.code || `HTTP_${status}`,
+        message: data?.message || error.message || 'An error occurred',
+        details: data?.details,
+      };
+
+      return Promise.reject(apiError);
+    }
+
+    // Network errors
+    if (error.request) {
+      const networkError: ApiError = {
+        code: 'NETWORK_ERROR',
+        message: 'Unable to connect to the server. Please check your connection.',
+      };
+      return Promise.reject(networkError);
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Generic API request helper
+ */
+export async function apiRequest<T>(config: AxiosRequestConfig): Promise<T> {
+  const response = await apiClient.request<ApiResponse<T>>(config);
+  return response.data.data;
+}
+
+/**
+ * GET request helper
+ */
+export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  return apiRequest<T>({ ...config, method: 'GET', url });
+}
+
+/**
+ * POST request helper
+ */
+export async function post<T>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  return apiRequest<T>({ ...config, method: 'POST', url, data });
+}
+
+/**
+ * PUT request helper
+ */
+export async function put<T>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  return apiRequest<T>({ ...config, method: 'PUT', url, data });
+}
+
+/**
+ * PATCH request helper
+ */
+export async function patch<T>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  return apiRequest<T>({ ...config, method: 'PATCH', url, data });
+}
+
+/**
+ * DELETE request helper
+ */
+export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  return apiRequest<T>({ ...config, method: 'DELETE', url });
+}
+
+export default apiClient;
