@@ -10,11 +10,12 @@
     "module": "ESNext",
     "skipLibCheck": true,
     /* Module Resolution */
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     /* Strict Type-Checking */
     "strict": true,
     "noImplicitAny": true,
@@ -58,20 +59,18 @@
         "src/constants/*"
       ]
     },
-    "allowJs": true,
-    "incremental": true,
-    "esModuleInterop": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "allowJs": false,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "src",
-    ".next/types/**/*.ts",
-    "**/*.ts",
-    "**/*.tsx"
+    "src"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
   ],
   "exclude": [
     "node_modules"

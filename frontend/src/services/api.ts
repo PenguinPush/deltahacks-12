@@ -3,10 +3,10 @@ import type { ApiResponse, ApiError } from '@/types';
 import { authHelpers } from '@/lib/supabase';
 
 /**
- * API Configuration (Next.js)
+ * API Configuration (Vite)
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
-const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10);
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
 
 /**
  * Create Axios instance with default configuration
