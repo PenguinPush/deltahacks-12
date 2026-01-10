@@ -51,25 +51,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signUp = async (email: string, password: string, fullName?: string) => {
     setLoading(true);
     try {
+      console.log('🔵 Attempting signup with:', { email, fullName });
       const { data, error } = await authHelpers.signUp(email, password, fullName);
 
+      console.log('🔵 Supabase signup response:', {
+        hasUser: !!data.user,
+        hasSession: !!data.session,
+        error: error?.message
+      });
+
       if (error) {
+        console.error('❌ Supabase signup error:', error);
         throw new Error(error.message);
       }
 
       if (!data.user) {
+        console.error('❌ No user returned from Supabase');
         throw new Error('Failed to create user account');
       }
 
       // Create user profile in backend MongoDB
       try {
-        await post('/auth/create-profile', {
-          userId: data.user.id,
+        console.log('🟢 Creating backend profile for:', data.user.id);
+        const response = await post('/auth/create-profile', {
+          supabase_user_id: data.user.id,
           email: data.user.email,
-          fullName: fullName || '',
+          full_name: fullName || '',
         });
-      } catch (backendError) {
-        console.error('Failed to create backend profile:', backendError);
+        console.log('🟢 Backend profile created:', response);
+      } catch (backendError: any) {
+        console.error('❌ Failed to create backend profile:', backendError);
+        console.error('❌ Error details:', backendError.response?.data || backendError.message);
         // Don't throw - user is created in Supabase, profile creation can be retried
       }
 
@@ -101,7 +113,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Update last login time in backend MongoDB
       try {
         await post('/auth/update-last-login', {
-          userId: data.user.id,
+          supabase_user_id: data.user.id,
         });
       } catch (backendError) {
         console.error('Failed to update last login:', backendError);

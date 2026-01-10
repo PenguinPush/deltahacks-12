@@ -1,0 +1,23 @@
+{
+  "nodes": [
+    {
+      "id": "180a1902-f2d9-4b14-94fd-5dbc885b66a4",
+      "name": "New Start Block",
+      "block_type": "Start",
+      "x": -196.28146850858765,
+      "y": 123.21089318743053,
+      "inputs": [],
+      "outputs": [
+        {
+          "key": "start_signal",
+          "value": null,
+          "data_type": "trigger"
+        }
+      ],
+      "hidden_inputs": [],
+      "hidden_outputs": [],
+      "menu_open": false
+    }
+  ],
+  "connections": []
+}

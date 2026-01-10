@@ -1,5 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { NODE_CATEGORIES, NODE_TEMPLATES } from '@constants/nodeTypes';
+import { schemaApi } from '@/services/schemaApi';
+import { AddSchemaModal } from './AddSchemaModal';
 import type { NodeTemplate, NodeCategory } from '@/types';
 
 /**
@@ -115,6 +117,36 @@ export function NodePalette(): JSX.Element {
     new Set(NODE_CATEGORIES.map((c) => c.id))
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [allTemplates, setAllTemplates] = useState<NodeTemplate[]>(NODE_TEMPLATES);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddSchemaModalOpen, setIsAddSchemaModalOpen] = useState(false);
+
+  /**
+   * Fetch schemas from MongoDB
+   */
+  const fetchSchemas = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const schemas = await schemaApi.listSchemas();
+      const schemaTemplates = schemaApi.convertSchemasToNodeTemplates(schemas);
+
+      // Merge hardcoded templates with schema-based templates
+      setAllTemplates([...NODE_TEMPLATES, ...schemaTemplates]);
+    } catch (error) {
+      console.error('Failed to fetch schemas:', error);
+      // Fall back to hardcoded templates
+      setAllTemplates(NODE_TEMPLATES);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Fetch schemas on mount
+   */
+  useEffect(() => {
+    fetchSchemas();
+  }, [fetchSchemas]);
 
   /**
    * Toggle category expansion
@@ -136,7 +168,7 @@ export function NodePalette(): JSX.Element {
    */
   const getTemplatesForCategory = useCallback(
     (categoryId: string): NodeTemplate[] => {
-      return NODE_TEMPLATES.filter((template) => {
+      return allTemplates.filter((template) => {
         const matchesCategory = template.category === categoryId;
         const matchesSearch =
           searchQuery === '' ||
@@ -145,7 +177,7 @@ export function NodePalette(): JSX.Element {
         return matchesCategory && matchesSearch;
       });
     },
-    [searchQuery]
+    [allTemplates, searchQuery]
   );
 
   return (
@@ -171,20 +203,24 @@ export function NodePalette(): JSX.Element {
 
       {/* Categories */}
       <div className="flex-1 overflow-y-auto">
-        {NODE_CATEGORIES.map((category) => {
-          const templates = getTemplatesForCategory(category.id);
-          if (templates.length === 0 && searchQuery !== '') return null;
+        {isLoading ? (
+          <div className="p-4 text-center text-gray-500 text-sm">Loading schemas...</div>
+        ) : (
+          NODE_CATEGORIES.map((category) => {
+            const templates = getTemplatesForCategory(category.id);
+            if (templates.length === 0 && searchQuery !== '') return null;
 
-          return (
-            <NodeCategorySection
-              key={category.id}
-              category={category}
-              templates={templates}
-              isExpanded={expandedCategories.has(category.id)}
-              onToggle={() => toggleCategory(category.id)}
-            />
-          );
-        })}
+            return (
+              <NodeCategorySection
+                key={category.id}
+                category={category}
+                templates={templates}
+                isExpanded={expandedCategories.has(category.id)}
+                onToggle={() => toggleCategory(category.id)}
+              />
+            );
+          })
+        )}
       </div>
 
       {/* Footer */}
@@ -192,13 +228,18 @@ export function NodePalette(): JSX.Element {
         <button
           className="w-full px-3 py-2 text-sm text-gray-400 hover:text-gray-200
                      hover:bg-gray-800 rounded-md transition-colors"
-          onClick={() => {
-            // TODO: Open template library modal
-          }}
+          onClick={() => setIsAddSchemaModalOpen(true)}
         >
-          Browse Templates
+          + Add Custom API
         </button>
       </div>
+
+      {/* Add Schema Modal */}
+      <AddSchemaModal
+        isOpen={isAddSchemaModalOpen}
+        onClose={() => setIsAddSchemaModalOpen(false)}
+        onSchemaCreated={fetchSchemas}
+      />
     </div>
   );
 }

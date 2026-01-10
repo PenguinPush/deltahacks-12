@@ -5,6 +5,13 @@ import type { AuthError, Session, User } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+// Debug: Log environment variables (only first/last chars of key for security)
+console.log('🔧 Supabase Config:', {
+  url: supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  keyPreview: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 10)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 10)}` : 'missing'
+});
+
 // Create Supabase client with session persistence
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

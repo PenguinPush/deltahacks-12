@@ -25,6 +25,12 @@ export const NODE_CATEGORIES: NodeCategory[] = [
     description: 'Conditional branching and logic nodes',
   },
   {
+    id: 'ui',
+    label: 'UI Components',
+    icon: 'layout',
+    description: 'User interface and display nodes',
+  },
+  {
     id: 'io',
     label: 'Input/Output',
     icon: 'terminal',
@@ -278,6 +284,74 @@ export const NODE_TEMPLATES: NodeTemplate[] = [
       nodeType: 'condition',
       executionType: 'control',
       conditions: [],
+    },
+  },
+
+  // Logic Nodes
+  {
+    id: 'string-builder',
+    type: 'transform',
+    label: 'String Builder',
+    icon: 'type',
+    description: 'Concatenate strings and build text',
+    category: 'logic',
+    handles: DEFAULT_HANDLES.transform,
+    defaultData: {
+      label: 'String Builder',
+      nodeType: 'logic',
+      executionType: 'transform',
+      template: 'Hello {name}!',
+      variables: [],
+    },
+  },
+  {
+    id: 'greeter',
+    type: 'transform',
+    label: 'Greeter',
+    icon: 'message-circle',
+    description: 'Create greeting messages',
+    category: 'logic',
+    handles: DEFAULT_HANDLES.transform,
+    defaultData: {
+      label: 'Greeter',
+      nodeType: 'logic',
+      executionType: 'transform',
+      greetingType: 'hello',
+      nameField: 'name',
+    },
+  },
+
+  // UI Component Nodes
+  {
+    id: 'user-input',
+    type: 'input',
+    label: 'User Input',
+    icon: 'edit-3',
+    description: 'Get input from user',
+    category: 'ui',
+    handles: DEFAULT_HANDLES.input,
+    defaultData: {
+      label: 'User Input',
+      nodeType: 'input',
+      executionType: 'manual',
+      placeholder: 'Enter value...',
+      defaultValue: '',
+    },
+  },
+  {
+    id: 'display',
+    type: 'output',
+    label: 'Display',
+    icon: 'monitor',
+    description: 'Display data to user',
+    category: 'ui',
+    handles: DEFAULT_HANDLES.output,
+    defaultData: {
+      label: 'Display',
+      nodeType: 'react',
+      executionType: 'output',
+      displayType: 'text',
+      format: 'plain',
     },
   },
 

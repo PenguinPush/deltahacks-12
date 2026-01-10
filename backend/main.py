@@ -147,32 +147,274 @@ def ensure_user_exists(user_id):
 
     return user
 
+def convert_workflow_to_project(workflow, input_data=None):
+    """
+    Convert MongoDB workflow format to executable Project with Blocks.
+
+    MongoDB format:
+    {
+        "nodes": [{"id": "...", "name": "...", "block_type": "API", ...}],
+        "edges": [{"source_id": "...", "target_id": "...", ...}]
+    }
+    """
+    project = Project()
+
+    # Create blocks from nodes
+    nodes = workflow.get('nodes', [])
+    for node in nodes:
+        block_id = node.get('id')
+        block_type = node.get('block_type', 'API')
+        name = node.get('name', 'Unnamed Block')
+
+        # Create appropriate block type
+        if block_type == 'API':
+            block = APIBlock(block_id=block_id, name=name)
+            # Set API block properties
+            block.url = node.get('url', '')
+            block.method = node.get('method', 'GET')
+
+        elif block_type == 'LOGIC':
+            block = LogicBlock(block_id=block_id, name=name)
+            # Logic blocks have custom transform functions
+
+        elif block_type == 'REACT':
+            block = ReactBlock(block_id=block_id, name=name)
+            # Set initial input values if provided
+            if input_data and block_id in input_data:
+                block.set_input('user_input', input_data[block_id])
+
+        elif block_type == 'TRANSFORM':
+            block = TransformBlock(block_id=block_id, name=name)
+
+        elif block_type == 'STRING_BUILDER':
+            block = StringBuilderBlock(block_id=block_id, name=name)
+        else:
+            # Default to API block
+            block = APIBlock(block_id=block_id, name=name)
+
+        project.add_block(block)
+
+    # Create connections from edges
+    edges = workflow.get('connections', workflow.get('edges', []))
+    for edge in edges:
+        source_id = edge.get('source_id')
+        source_output = edge.get('source_output', 'output')
+        target_id = edge.get('target_id')
+        target_input = edge.get('target_input', 'input')
+
+        source_block = project.blocks.get(source_id)
+        target_block = project.blocks.get(target_id)
+
+        if source_block and target_block:
+            source_block.connect(source_output, target_block, target_input)
+
+    return project
+
+def save_execution_result(workflow_id, user_id, results):
+    """
+    Save workflow execution results to MongoDB.
+    Creates an execution history record.
+    """
+    try:
+        execution_record = {
+            'workflow_id': workflow_id,
+            'user_id': user_id,
+            'executed_at': datetime.utcnow(),
+            'status': 'completed',
+            'results': results,
+            'execution_order': results.get('execution_order', []),
+            'block_results': results.get('block_results', {})
+        }
+
+        # Store in executions collection
+        if not hasattr(mongodb, 'executions'):
+            mongodb.executions = mongodb.db['executions']
+
+        mongodb.executions.insert_one(execution_record)
+        print(f"✓ Saved execution result for workflow {workflow_id}")
+    except Exception as e:
+        print(f"✗ Failed to save execution result: {e}")
+
 @app.route('/api/execute', methods=['POST'])
 def run_graph():
     """
-    Endpoint to trigger graph execution.
-    Note: For MVP, this still uses in-memory project.
-    TODO: Load workflow from MongoDB by workflow_id
+    Endpoint to trigger workflow execution from MongoDB.
+    Expects JSON: { "workflow_id": "...", "method": "bfs", "input_data": {...} }
     """
-    global current_project
-
-    # Optional: Get user_id for future use
-    user_id = get_user_id_from_request()
-
-    if not current_project.blocks:
-        return jsonify({"error": "No graph defined"}), 400
-
-    method = request.args.get('method', 'bfs')
-    
-    # Identify start nodes (nodes with no input connectors active)
-    # For simplicity, we can just pass all blocks and let the engine sort it out,
-    # but passing known start nodes is more efficient.
-    # Here we just pass all blocks in the project as potential start points for discovery.
-    start_blocks = list(current_project.blocks.values())
-    
     try:
+        data = request.json
+        workflow_id = data.get('workflow_id')
+        method = data.get('method', 'bfs')
+        input_data = data.get('input_data', {})
+
+        # Get user_id for ownership verification
+        user_id = get_user_id_from_request()
+
+        if not workflow_id:
+            # Fallback to demo workflow if no workflow_id provided
+            global current_project
+            if not current_project.blocks:
+                return jsonify({"error": "No workflow specified and no demo workflow available"}), 400
+            start_blocks = list(current_project.blocks.values())
+        else:
+            # Load workflow from MongoDB
+            workflow = mongodb.get_workflow(workflow_id, user_id)
+
+            if not workflow:
+                return jsonify({"error": "Workflow not found or access denied"}), 404
+
+            # Convert MongoDB workflow to executable blocks
+            project = convert_workflow_to_project(workflow, input_data)
+            start_blocks = list(project.blocks.values())
+
+        # Execute the workflow
         results = execute_graph(start_blocks, method=method)
+
+        # Save execution result to MongoDB
+        if workflow_id and user_id:
+            save_execution_result(workflow_id, user_id, results)
+
         return jsonify(results)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/workflows/<workflow_id>/executions', methods=['GET'])
+def get_workflow_executions(workflow_id):
+    """
+    Get execution history for a workflow.
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID required"}), 401
+
+        # Ensure executions collection exists
+        if not hasattr(mongodb, 'executions'):
+            mongodb.executions = mongodb.db['executions']
+
+        # Get executions for this workflow and user
+        executions = list(mongodb.executions.find(
+            {'workflow_id': workflow_id, 'user_id': user_id}
+        ).sort('executed_at', -1).limit(50))
+
+        # Convert ObjectId to string for JSON serialization
+        for execution in executions:
+            execution['_id'] = str(execution['_id'])
+
+        return jsonify({"executions": executions}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================================
+# Schema Management Endpoints
+# ============================================================================
+
+@app.route('/api/schemas', methods=['GET'])
+def get_schemas():
+    """
+    Get all schemas (global + user's private schemas).
+    Query params:
+      - type: Filter by schema_type (optional)
+    """
+    try:
+        user_id = get_user_id_from_request()
+        schema_type = request.args.get('type')
+
+        schemas = mongodb.get_schemas(schema_type=schema_type, user_id=user_id)
+        return jsonify({"schemas": schemas}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/schemas', methods=['POST'])
+def create_schema():
+    """
+    Create a new schema.
+    Expects JSON: {
+      "schema_type": "api" | "node_template" | "integration",
+      "name": "Schema Name",
+      "config": {...},
+      "is_global": false (optional)
+    }
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID required"}), 401
+
+        data = request.json
+
+        # Validate required fields
+        if not data.get('schema_type'):
+            return jsonify({"error": "schema_type is required"}), 400
+        if not data.get('name'):
+            return jsonify({"error": "name is required"}), 400
+        if not data.get('config'):
+            return jsonify({"error": "config is required"}), 400
+
+        schema = mongodb.create_schema(
+            schema_type=data['schema_type'],
+            name=data['name'],
+            config=data['config'],
+            user_id=user_id,
+            is_global=data.get('is_global', False)
+        )
+
+        return jsonify(schema), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/schemas/<schema_id>', methods=['PUT'])
+def update_schema(schema_id):
+    """
+    Update a schema.
+    Expects JSON with fields to update.
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID required"}), 401
+
+        data = request.json
+
+        # Remove fields that shouldn't be updated directly
+        updates = {k: v for k, v in data.items() if k not in ['_id', 'created_at', 'updated_at']}
+
+        success = mongodb.update_schema(schema_id, user_id, updates)
+
+        if success:
+            return jsonify({"success": True, "schema_id": schema_id}), 200
+        else:
+            return jsonify({"error": "Schema not found or unauthorized"}), 404
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/schemas/<schema_id>', methods=['DELETE'])
+def delete_schema(schema_id):
+    """
+    Delete a schema.
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID required"}), 401
+
+        success = mongodb.delete_schema(schema_id, user_id)
+
+        if success:
+            return jsonify({"success": True}), 200
+        else:
+            return jsonify({"error": "Schema not found or unauthorized"}), 404
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -718,4 +960,4 @@ def setup_demo_project():
 
 if __name__ == '__main__':
     current_project = setup_demo_project()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
