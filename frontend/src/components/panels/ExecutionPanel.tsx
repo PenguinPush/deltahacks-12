@@ -265,19 +265,17 @@ export function ExecutionPanel({
           {/* Progress Bar */}
           <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
             <div
-              className={`h-full transition-all duration-300 ${
-                currentExecution.status === 'error'
+              className={`h-full transition-all duration-300 ${currentExecution.status === 'error'
                   ? 'bg-red-500'
                   : currentExecution.status === 'success'
-                  ? 'bg-green-500'
-                  : 'bg-blue-500'
-              }`}
+                    ? 'bg-green-500'
+                    : 'bg-blue-500'
+                }`}
               style={{
-                width: `${
-                  (currentExecution.steps.filter(s => s.status === 'success' || s.status === 'error').length /
+                width: `${(currentExecution.steps.filter(s => s.status === 'success' || s.status === 'error').length /
                     currentExecution.steps.length) *
                   100
-                }%`,
+                  }%`,
               }}
             />
           </div>
@@ -353,15 +351,14 @@ interface StepItemProps {
 function StepItem({ step, isExpanded, onToggle, onHover, formatDuration }: StepItemProps) {
   return (
     <div
-      className={`rounded-lg border transition-all ${
-        step.status === 'running'
+      className={`rounded-lg border transition-all ${step.status === 'running'
           ? 'border-yellow-500/50 bg-yellow-500/10'
           : step.status === 'error'
-          ? 'border-red-500/50 bg-red-500/10'
-          : step.status === 'success'
-          ? 'border-green-500/50 bg-green-500/10'
-          : 'border-gray-700 bg-gray-800/50'
-      }`}
+            ? 'border-red-500/50 bg-red-500/10'
+            : step.status === 'success'
+              ? 'border-green-500/50 bg-green-500/10'
+              : 'border-gray-700 bg-gray-800/50'
+        }`}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
     >
@@ -413,7 +410,7 @@ function StepItem({ step, isExpanded, onToggle, onHover, formatDuration }: StepI
               {step.input && Object.keys(step.input).length > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Input:</p>
-                  <pre className="text-xs bg-gray-900 p-2 rounded overflow-x-auto text-gray-300">
+                  <pre className="text-xs bg-black p-2 rounded overflow-x-auto text-gray-300">
                     {JSON.stringify(step.input, null, 2)}
                   </pre>
                 </div>
@@ -421,7 +418,7 @@ function StepItem({ step, isExpanded, onToggle, onHover, formatDuration }: StepI
               {step.output && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Output:</p>
-                  <pre className="text-xs bg-gray-900 p-2 rounded overflow-x-auto text-gray-300">
+                  <pre className="text-xs bg-black p-2 rounded overflow-x-auto text-gray-300">
                     {JSON.stringify(step.output, null, 2)}
                   </pre>
                 </div>
@@ -437,13 +434,12 @@ function StepItem({ step, isExpanded, onToggle, onHover, formatDuration }: StepI
                 {step.logs.map((log, i) => (
                   <div
                     key={i}
-                    className={`text-xs flex items-start gap-2 ${
-                      log.level === 'error'
+                    className={`text-xs flex items-start gap-2 ${log.level === 'error'
                         ? 'text-red-400'
                         : log.level === 'warn'
-                        ? 'text-yellow-400'
-                        : 'text-gray-400'
-                    }`}
+                          ? 'text-yellow-400'
+                          : 'text-gray-400'
+                      }`}
                   >
                     <span className="text-gray-600 flex-shrink-0">
                       {new Date(log.timestamp).toLocaleTimeString()}

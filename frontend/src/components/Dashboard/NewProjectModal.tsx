@@ -197,7 +197,7 @@ export function NewProjectModal({
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end gap-3 p-4 border-t border-[#2A2A2A]">
+      <div className="flex justify-end gap-3 p-4 border-t border-[#2A2A2A] bg-black">
         <Button variant="secondary" onClick={handleClose}>
           Cancel
         </Button>

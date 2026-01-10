@@ -307,15 +307,14 @@ function EndpointCard({
 }: EndpointCardProps) {
   return (
     <div
-      className={`rounded-lg border transition-all ${
-        !endpoint.enabled
+      className={`rounded-lg border transition-all ${!endpoint.enabled
           ? 'border-gray-700 bg-gray-800/30 opacity-60'
           : testResult?.success === false
-          ? 'border-red-500/50 bg-red-500/10'
-          : testResult?.success
-          ? 'border-green-500/50 bg-green-500/10'
-          : 'border-gray-700 bg-gray-800/50'
-      }`}
+            ? 'border-red-500/50 bg-red-500/10'
+            : testResult?.success
+              ? 'border-green-500/50 bg-green-500/10'
+              : 'border-gray-700 bg-gray-800/50'
+        }`}
     >
       <div className="p-3">
         <div className="flex items-start justify-between mb-2">
@@ -341,14 +340,12 @@ function EndpointCard({
               className="sr-only"
             />
             <div
-              className={`w-8 h-4 rounded-full transition-colors ${
-                endpoint.enabled ? 'bg-green-600' : 'bg-gray-600'
-              }`}
+              className={`w-8 h-4 rounded-full transition-colors ${endpoint.enabled ? 'bg-green-600' : 'bg-gray-600'
+                }`}
             >
               <div
-                className={`w-3 h-3 rounded-full bg-white transition-transform mt-0.5 ${
-                  endpoint.enabled ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'
-                }`}
+                className={`w-3 h-3 rounded-full bg-white transition-transform mt-0.5 ${endpoint.enabled ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'
+                  }`}
               />
             </div>
           </label>
@@ -412,7 +409,7 @@ function EndpointCard({
           {/* URL */}
           <div className="mb-3">
             <label className="block text-xs text-gray-500 mb-1">Full URL</label>
-            <div className="flex items-center gap-2 p-2 bg-gray-900 rounded font-mono text-xs">
+            <div className="flex items-center gap-2 p-2 bg-black rounded font-mono text-xs">
               <Globe className="w-3 h-3 text-gray-500 flex-shrink-0" />
               <span className="text-gray-300 truncate">{endpoint.fullUrl}</span>
               <a
@@ -429,7 +426,7 @@ function EndpointCard({
           {/* Response Body */}
           <div className="mb-3">
             <label className="block text-xs text-gray-500 mb-1">Response Body</label>
-            <pre className="p-2 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto max-h-32">
+            <pre className="p-2 bg-black rounded text-xs text-gray-300 overflow-x-auto max-h-32">
               {JSON.stringify(endpoint.responseBody, null, 2)}
             </pre>
           </div>
@@ -440,7 +437,7 @@ function EndpointCard({
               <label className="block text-xs text-gray-500 mb-1">Scenarios</label>
               <div className="space-y-1">
                 {endpoint.scenarios.map((scenario) => (
-                  <div key={scenario.id} className="flex items-center justify-between p-2 bg-gray-900 rounded text-xs">
+                  <div key={scenario.id} className="flex items-center justify-between p-2 bg-black rounded text-xs">
                     <span className="text-white">{scenario.name}</span>
                     {scenario.probability && (
                       <span className="text-gray-500">{scenario.probability}% chance</span>

@@ -21,7 +21,7 @@ interface CollapsiblePanelProps {
 
 /**
  * CollapsiblePanel Component
- *
+ *y
  * A panel that can be collapsed/expanded.
  * Used for the left (Components) and right (Properties) panels.
  * Automatically expands on hover when collapsed.

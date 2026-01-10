@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* React Flow base styles */
@@ -15,7 +15,7 @@
   }
 
   html, body, #root {
-    @apply h-full w-full m-0 p-0 bg-app-bg text-text-primary font-sans antialiased;
+    @apply h-full w-full m-0 p-0 bg-black text-text-primary font-sans antialiased;
   }
 
   /* Custom scrollbar */
@@ -113,7 +113,7 @@
   }
 
   .react-flow__background {
-    @apply bg-app-bg;
+    @apply bg-black;
   }
 
   .react-flow__background pattern circle {
@@ -296,11 +296,11 @@
 /* Modal styles */
 @layer components {
   .modal-backdrop {
-    @apply fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in;
+    @apply fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in;
   }
 
   .modal-container {
-    @apply bg-app-panel border border-border-subtle rounded-lg shadow-modal max-w-xl w-full mx-4 max-h-[90vh] overflow-hidden animate-slide-in;
+    @apply bg-black border border-border-subtle rounded-lg shadow-modal max-w-xl w-full mx-4 max-h-[90vh] overflow-hidden animate-slide-in;
   }
 
   .modal-header {
@@ -312,11 +312,11 @@
   }
 
   .modal-body {
-    @apply p-6 overflow-y-auto;
+    @apply bg-black p-6 overflow-y-auto;
   }
 
   .modal-footer {
-    @apply flex items-center justify-end gap-3 px-6 py-4 border-t border-border;
+    @apply bg-black flex items-center justify-end gap-3 px-6 py-4 border-t border-border ;
   }
 }
 

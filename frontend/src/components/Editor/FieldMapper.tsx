@@ -111,7 +111,7 @@ export function FieldMapper({
       </div>
 
       {/* Content */}
-      <div className="p-3 bg-gray-900 space-y-2">
+      <div className="p-3 bg-black space-y-2">
         {/* Existing Mappings */}
         {mappings.map((mapping) => (
           <div

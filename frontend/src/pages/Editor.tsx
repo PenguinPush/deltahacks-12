@@ -15,9 +15,12 @@ import ReactFlow, {
   Handle,
   Position,
   useReactFlow,
+  MarkerType,
 } from 'reactflow';
 import { SchemaFieldList } from '@components/Schema';
 import type { SchemaField } from '@/types';
+import { useNodeZIndex } from '@/store/nodeZIndex';
+import { WORKFLOW_TEMPLATES } from '@/data/templates';
 import {
   Home,
   Save,
@@ -122,6 +125,7 @@ interface ParameterField {
   default?: string | number | boolean;
   options?: { value: string; label: string }[];
   placeholder?: string;
+  disabled?: boolean;
 }
 
 interface NodeData {
@@ -132,6 +136,7 @@ interface NodeData {
   templateId: string;
   credentials?: Record<string, string>;
   parameters?: Record<string, string | number | boolean>;
+  inputValues?: Record<string, string | number | boolean>; // For input field values
   status?: 'idle' | 'running' | 'success' | 'error';
   executionTime?: number;
   result?: unknown;
@@ -459,10 +464,12 @@ const apiTemplates: APITemplate[] = [
     },
     credentials: [],
     parameters: [
-      { id: 'input_type', name: 'Input Type', type: 'select', required: true, default: 'manual', options: [
-        { value: 'manual', label: 'Manual Trigger' },
-        { value: 'schedule', label: 'Scheduled' },
-      ]},
+      {
+        id: 'input_type', name: 'Input Type', type: 'select', required: true, default: 'manual', options: [
+          { value: 'manual', label: 'Manual Trigger' },
+          { value: 'schedule', label: 'Scheduled' },
+        ]
+      },
     ],
   },
   {
@@ -484,11 +491,13 @@ const apiTemplates: APITemplate[] = [
     credentials: [],
     parameters: [
       { id: 'path', name: 'Webhook Path', type: 'text', required: true, placeholder: '/webhook/my-trigger', default: '/webhook' },
-      { id: 'method', name: 'HTTP Method', type: 'select', required: true, default: 'POST', options: [
-        { value: 'POST', label: 'POST' },
-        { value: 'GET', label: 'GET' },
-        { value: 'PUT', label: 'PUT' },
-      ]},
+      {
+        id: 'method', name: 'HTTP Method', type: 'select', required: true, default: 'POST', options: [
+          { value: 'POST', label: 'POST' },
+          { value: 'GET', label: 'GET' },
+          { value: 'PUT', label: 'PUT' },
+        ]
+      },
     ],
   },
   {
@@ -507,15 +516,19 @@ const apiTemplates: APITemplate[] = [
     },
     credentials: [],
     parameters: [
-      { id: 'output_type', name: 'Output Type', type: 'select', required: true, default: 'response', options: [
-        { value: 'response', label: 'HTTP Response' },
-        { value: 'log', label: 'Log Only' },
-        { value: 'webhook', label: 'Send to Webhook' },
-      ]},
-      { id: 'format', name: 'Format', type: 'select', required: true, default: 'json', options: [
-        { value: 'json', label: 'JSON' },
-        { value: 'text', label: 'Plain Text' },
-      ]},
+      {
+        id: 'output_type', name: 'Output Type', type: 'select', required: true, default: 'response', options: [
+          { value: 'response', label: 'HTTP Response' },
+          { value: 'log', label: 'Log Only' },
+          { value: 'webhook', label: 'Send to Webhook' },
+        ]
+      },
+      {
+        id: 'format', name: 'Format', type: 'select', required: true, default: 'json', options: [
+          { value: 'json', label: 'JSON' },
+          { value: 'text', label: 'Plain Text' },
+        ]
+      },
     ],
   },
   {
@@ -536,10 +549,12 @@ const apiTemplates: APITemplate[] = [
     },
     credentials: [],
     parameters: [
-      { id: 'transform_type', name: 'Transform Type', type: 'select', required: true, default: 'map', options: [
-        { value: 'map', label: 'Map Fields' },
-        { value: 'custom', label: 'Custom JavaScript' },
-      ]},
+      {
+        id: 'transform_type', name: 'Transform Type', type: 'select', required: true, default: 'map', options: [
+          { value: 'map', label: 'Map Fields' },
+          { value: 'custom', label: 'Custom JavaScript' },
+        ]
+      },
     ],
   },
   {
@@ -639,12 +654,14 @@ const apiTemplates: APITemplate[] = [
       { id: 'api_key', name: 'API Key', type: 'password', required: true, placeholder: 'sk_live_...' },
     ],
     parameters: [
-      { id: 'endpoint', name: 'Endpoint', type: 'select', required: true, default: 'charges', options: [
-        { value: 'charges', label: 'Create Charge' },
-        { value: 'customers', label: 'Create Customer' },
-        { value: 'subscriptions', label: 'Create Subscription' },
-        { value: 'payment_intents', label: 'Create Payment Intent' },
-      ]},
+      {
+        id: 'endpoint', name: 'Endpoint', type: 'select', required: true, default: 'charges', options: [
+          { value: 'charges', label: 'Create Charge' },
+          { value: 'customers', label: 'Create Customer' },
+          { value: 'subscriptions', label: 'Create Subscription' },
+          { value: 'payment_intents', label: 'Create Payment Intent' },
+        ]
+      },
       { id: 'test_mode', name: 'Test Mode', type: 'boolean', required: false, default: true },
     ],
   },
@@ -677,10 +694,12 @@ const apiTemplates: APITemplate[] = [
       { id: 'api_key', name: 'API Key', type: 'password', required: true, placeholder: 'SG...' },
     ],
     parameters: [
-      { id: 'content_type', name: 'Content Type', type: 'select', required: true, default: 'text/html', options: [
-        { value: 'text/html', label: 'HTML' },
-        { value: 'text/plain', label: 'Plain Text' },
-      ]},
+      {
+        id: 'content_type', name: 'Content Type', type: 'select', required: true, default: 'text/html', options: [
+          { value: 'text/html', label: 'HTML' },
+          { value: 'text/plain', label: 'Plain Text' },
+        ]
+      },
       { id: 'sandbox_mode', name: 'Sandbox Mode', type: 'boolean', required: false, default: false },
     ],
   },
@@ -714,13 +733,15 @@ const apiTemplates: APITemplate[] = [
       { id: 'api_key', name: 'API Key', type: 'password', required: true, placeholder: 'key...' },
     ],
     parameters: [
-      { id: 'action', name: 'Action', type: 'select', required: true, default: 'create', options: [
-        { value: 'create', label: 'Create Record' },
-        { value: 'read', label: 'Read Record' },
-        { value: 'update', label: 'Update Record' },
-        { value: 'delete', label: 'Delete Record' },
-        { value: 'list', label: 'List Records' },
-      ]},
+      {
+        id: 'action', name: 'Action', type: 'select', required: true, default: 'create', options: [
+          { value: 'create', label: 'Create Record' },
+          { value: 'read', label: 'Read Record' },
+          { value: 'update', label: 'Update Record' },
+          { value: 'delete', label: 'Delete Record' },
+          { value: 'list', label: 'List Records' },
+        ]
+      },
     ],
   },
   // AI APIs
@@ -752,12 +773,14 @@ const apiTemplates: APITemplate[] = [
       { id: 'api_key', name: 'API Key', type: 'password', required: true, placeholder: 'sk-...' },
     ],
     parameters: [
-      { id: 'model', name: 'Model', type: 'select', required: true, default: 'gpt-4', options: [
-        { value: 'gpt-4o', label: 'GPT-4o' },
-        { value: 'gpt-4', label: 'GPT-4' },
-        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-      ]},
+      {
+        id: 'model', name: 'Model', type: 'select', required: true, default: 'gpt-4', options: [
+          { value: 'gpt-4o', label: 'GPT-4o' },
+          { value: 'gpt-4', label: 'GPT-4' },
+          { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+          { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+        ]
+      },
       { id: 'temperature', name: 'Temperature', type: 'number', required: false, default: 0.7, placeholder: '0.0 - 2.0' },
     ],
   },
@@ -791,11 +814,13 @@ const apiTemplates: APITemplate[] = [
       { id: 'auth_token', name: 'Auth Token', type: 'password', required: true },
     ],
     parameters: [
-      { id: 'channel', name: 'Channel', type: 'select', required: true, default: 'sms', options: [
-        { value: 'sms', label: 'SMS' },
-        { value: 'whatsapp', label: 'WhatsApp' },
-        { value: 'voice', label: 'Voice Call' },
-      ]},
+      {
+        id: 'channel', name: 'Channel', type: 'select', required: true, default: 'sms', options: [
+          { value: 'sms', label: 'SMS' },
+          { value: 'whatsapp', label: 'WhatsApp' },
+          { value: 'voice', label: 'Voice Call' },
+        ]
+      },
     ],
   },
   // Webhook/HTTP
@@ -826,18 +851,22 @@ const apiTemplates: APITemplate[] = [
     },
     credentials: [],
     parameters: [
-      { id: 'method', name: 'Method', type: 'select', required: true, default: 'POST', options: [
-        { value: 'GET', label: 'GET' },
-        { value: 'POST', label: 'POST' },
-        { value: 'PUT', label: 'PUT' },
-        { value: 'PATCH', label: 'PATCH' },
-        { value: 'DELETE', label: 'DELETE' },
-      ]},
-      { id: 'content_type', name: 'Content Type', type: 'select', required: true, default: 'application/json', options: [
-        { value: 'application/json', label: 'JSON' },
-        { value: 'application/x-www-form-urlencoded', label: 'Form URL Encoded' },
-        { value: 'multipart/form-data', label: 'Multipart Form' },
-      ]},
+      {
+        id: 'method', name: 'Method', type: 'select', required: true, default: 'POST', options: [
+          { value: 'GET', label: 'GET' },
+          { value: 'POST', label: 'POST' },
+          { value: 'PUT', label: 'PUT' },
+          { value: 'PATCH', label: 'PATCH' },
+          { value: 'DELETE', label: 'DELETE' },
+        ]
+      },
+      {
+        id: 'content_type', name: 'Content Type', type: 'select', required: true, default: 'application/json', options: [
+          { value: 'application/json', label: 'JSON' },
+          { value: 'application/x-www-form-urlencoded', label: 'Form URL Encoded' },
+          { value: 'multipart/form-data', label: 'Multipart Form' },
+        ]
+      },
       { id: 'retry_on_fail', name: 'Retry on Failure', type: 'boolean', required: false, default: false },
     ],
   },
@@ -870,17 +899,21 @@ const apiTemplates: APITemplate[] = [
       { id: 'service_account', name: 'Service Account JSON', type: 'password', required: true },
     ],
     parameters: [
-      { id: 'action', name: 'Action', type: 'select', required: true, default: 'append', options: [
-        { value: 'read', label: 'Read Range' },
-        { value: 'append', label: 'Append Row' },
-        { value: 'update', label: 'Update Range' },
-        { value: 'clear', label: 'Clear Range' },
-        { value: 'batch_update', label: 'Batch Update' },
-      ]},
-      { id: 'value_input_option', name: 'Value Input', type: 'select', required: false, default: 'USER_ENTERED', options: [
-        { value: 'RAW', label: 'Raw (as-is)' },
-        { value: 'USER_ENTERED', label: 'User Entered (parse formulas)' },
-      ]},
+      {
+        id: 'action', name: 'Action', type: 'select', required: true, default: 'append', options: [
+          { value: 'read', label: 'Read Range' },
+          { value: 'append', label: 'Append Row' },
+          { value: 'update', label: 'Update Range' },
+          { value: 'clear', label: 'Clear Range' },
+          { value: 'batch_update', label: 'Batch Update' },
+        ]
+      },
+      {
+        id: 'value_input_option', name: 'Value Input', type: 'select', required: false, default: 'USER_ENTERED', options: [
+          { value: 'RAW', label: 'Raw (as-is)' },
+          { value: 'USER_ENTERED', label: 'User Entered (parse formulas)' },
+        ]
+      },
     ],
   },
   // Cloud Functions
@@ -913,10 +946,12 @@ const apiTemplates: APITemplate[] = [
       { id: 'region', name: 'Region', type: 'text', required: true, placeholder: 'us-east-1' },
     ],
     parameters: [
-      { id: 'invocation_type', name: 'Invocation Type', type: 'select', required: true, default: 'RequestResponse', options: [
-        { value: 'RequestResponse', label: 'Synchronous' },
-        { value: 'Event', label: 'Asynchronous' },
-      ]},
+      {
+        id: 'invocation_type', name: 'Invocation Type', type: 'select', required: true, default: 'RequestResponse', options: [
+          { value: 'RequestResponse', label: 'Synchronous' },
+          { value: 'Event', label: 'Asynchronous' },
+        ]
+      },
     ],
   },
   // MongoDB Atlas
@@ -953,17 +988,19 @@ const apiTemplates: APITemplate[] = [
       { id: 'app_id', name: 'App ID', type: 'text', required: true, placeholder: 'data-xxxxx' },
     ],
     parameters: [
-      { id: 'action', name: 'Action', type: 'select', required: true, default: 'insertOne', options: [
-        { value: 'findOne', label: 'Find One Document' },
-        { value: 'find', label: 'Find Multiple Documents' },
-        { value: 'insertOne', label: 'Insert One Document' },
-        { value: 'insertMany', label: 'Insert Multiple Documents' },
-        { value: 'updateOne', label: 'Update One Document' },
-        { value: 'updateMany', label: 'Update Multiple Documents' },
-        { value: 'deleteOne', label: 'Delete One Document' },
-        { value: 'deleteMany', label: 'Delete Multiple Documents' },
-        { value: 'aggregate', label: 'Aggregate Pipeline' },
-      ]},
+      {
+        id: 'action', name: 'Action', type: 'select', required: true, default: 'insertOne', options: [
+          { value: 'findOne', label: 'Find One Document' },
+          { value: 'find', label: 'Find Multiple Documents' },
+          { value: 'insertOne', label: 'Insert One Document' },
+          { value: 'insertMany', label: 'Insert Multiple Documents' },
+          { value: 'updateOne', label: 'Update One Document' },
+          { value: 'updateMany', label: 'Update Multiple Documents' },
+          { value: 'deleteOne', label: 'Delete One Document' },
+          { value: 'deleteMany', label: 'Delete Multiple Documents' },
+          { value: 'aggregate', label: 'Aggregate Pipeline' },
+        ]
+      },
     ],
   },
   // Moorcheh.ai
@@ -997,12 +1034,14 @@ const apiTemplates: APITemplate[] = [
       { id: 'api_key', name: 'API Key', type: 'password', required: true, placeholder: 'Your Moorcheh API key' },
     ],
     parameters: [
-      { id: 'operation', name: 'Operation', type: 'select', required: true, default: 'search', options: [
-        { value: 'search', label: 'Semantic Search' },
-        { value: 'rag', label: 'RAG (Retrieval + Generation)' },
-        { value: 'embed', label: 'Generate Embeddings' },
-        { value: 'index', label: 'Index Documents' },
-      ]},
+      {
+        id: 'operation', name: 'Operation', type: 'select', required: true, default: 'search', options: [
+          { value: 'search', label: 'Semantic Search' },
+          { value: 'rag', label: 'RAG (Retrieval + Generation)' },
+          { value: 'embed', label: 'Generate Embeddings' },
+          { value: 'index', label: 'Index Documents' },
+        ]
+      },
       { id: 'rerank', name: 'Re-rank Results', type: 'boolean', required: false, default: false },
     ],
   },
@@ -1022,19 +1061,23 @@ const apiTemplates: APITemplate[] = [
     },
     credentials: [],
     parameters: [
-      { id: 'method', name: 'Method', type: 'select', required: true, default: 'GET', options: [
-        { value: 'GET', label: 'GET' },
-        { value: 'POST', label: 'POST' },
-        { value: 'PUT', label: 'PUT' },
-        { value: 'PATCH', label: 'PATCH' },
-        { value: 'DELETE', label: 'DELETE' },
-      ]},
+      {
+        id: 'method', name: 'Method', type: 'select', required: true, default: 'GET', options: [
+          { value: 'GET', label: 'GET' },
+          { value: 'POST', label: 'POST' },
+          { value: 'PUT', label: 'PUT' },
+          { value: 'PATCH', label: 'PATCH' },
+          { value: 'DELETE', label: 'DELETE' },
+        ]
+      },
       { id: 'url', name: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://api.example.com/endpoint' },
-      { id: 'content_type', name: 'Content Type', type: 'select', required: true, default: 'application/json', options: [
-        { value: 'application/json', label: 'JSON' },
-        { value: 'application/x-www-form-urlencoded', label: 'Form URL Encoded' },
-        { value: 'multipart/form-data', label: 'Multipart Form' },
-      ]},
+      {
+        id: 'content_type', name: 'Content Type', type: 'select', required: true, default: 'application/json', options: [
+          { value: 'application/json', label: 'JSON' },
+          { value: 'application/x-www-form-urlencoded', label: 'Form URL Encoded' },
+          { value: 'multipart/form-data', label: 'Multipart Form' },
+        ]
+      },
     ],
   },
 ];
@@ -1063,75 +1106,258 @@ function getTemplateById(templateId: string): APITemplate | undefined {
 // CUSTOM NODE COMPONENT
 // ============================================
 
-function APINode({ data, selected }: { data: NodeData; selected: boolean }) {
+function APINode({ data, selected, id }: { data: NodeData; selected: boolean; id: string }) {
+  const { setNodes } = useReactFlow();
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Zustand store for z-index management
+  const nodeZIndices = useNodeZIndex((state) => state.nodeZIndices);
+  const bringToFront = useNodeZIndex((state) => state.bringToFront);
+  const zIndex = nodeZIndices[id] || 1;
+
   // Look up the icon from the templates array
   const template = getTemplateById(data.templateId);
   const IconComponent = template?.icon || Globe;
 
-  const statusStyles = {
-    idle: '',
-    running: 'animate-pulse border-accent-blue',
-    success: 'border-status-success',
-    error: 'border-status-error animate-shake',
+  // Initialize parameters if they don't exist
+  if (!data.parameters) {
+    data.parameters = {};
+  }
+  if (!data.credentials) {
+    data.credentials = {};
+  }
+  if (!data.inputValues) {
+    data.inputValues = {};
+  }
+
+  // Update node data when parameter changes
+  const updateNodeData = (key: string, value: any, type: 'parameter' | 'credential' | 'input') => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === id) {
+          const newData = { ...node.data };
+          if (type === 'parameter') {
+            newData.parameters = { ...newData.parameters, [key]: value };
+          } else if (type === 'credential') {
+            newData.credentials = { ...newData.credentials, [key]: value };
+          } else if (type === 'input') {
+            newData.inputValues = { ...newData.inputValues, [key]: value };
+          }
+          return { ...node, data: newData };
+        }
+        return node;
+      })
+    );
+  };
+
+  // Bring node to front when clicked or dragged
+  const handleMouseDown = () => {
+    bringToFront(id);
+  };
+
+  // Determine border color based on status and selection
+  const getBorderStyle = () => {
+    if (data.status === 'error') {
+      return '3px solid #EF4444'; // Red for errors
+    }
+    if (data.status === 'running') {
+      return '3px solid #22C55E'; // Green for running
+    }
+    if (selected) {
+      return '3px solid rgba(59, 130, 246, 0.6)'; // Bright blue for selected
+    }
+    return '1px solid rgba(255, 255, 255, 0.1)'; // Default subtle border
+  };
+
+  // Animation class for running and error states
+  const getAnimationClass = () => {
+    if (data.status === 'running') return 'animate-pulse';
+    if (data.status === 'error') return 'animate-shake';
+    return '';
   };
 
   return (
     <div
-      className={`workflow-node ${selected ? 'selected' : ''} ${data.status ? statusStyles[data.status] : ''}`}
+      className={`workflow-node ${getAnimationClass()}`}
+      onMouseDown={handleMouseDown}
       style={{
-        minWidth: 200,
-        backgroundColor: 'rgba(38, 38, 38, 0.85)',
-        backdropFilter: 'blur(8px)',
+        minWidth: 280,
+        maxWidth: 350,
+        backgroundColor: 'rgba(50, 50, 50, 0.4)',
+        backdropFilter: 'blur(6px)',
+        border: getBorderStyle(),
+        boxShadow: selected ? '0 0 20px rgba(59, 130, 246, 0.5)' : 'none',
+        zIndex: zIndex,
+        position: 'relative',
       }}
     >
       <Handle
         type="target"
-        position={Position.Top}
-        className="!w-3 !h-3 !border-2 !border-gray-500 !bg-gray-700 hover:!border-accent-blue hover:!bg-accent-blue transition-all"
+        position={Position.Left}
+        className="!w-2 !h-2 !border-2 !border-gray-500 !bg-gray-700 hover:!border-accent-blue hover:!bg-accent-blue transition-all !-left-1"
       />
 
-      <div className="workflow-node-header">
+      {/* Header */}
+      <div
+        className="workflow-node-header cursor-pointer"
+        onClick={() => setCollapsed(!collapsed)}
+        style={{
+          backgroundColor: `${data.color}20`,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+        }}
+      >
         <div
           className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${data.color}30` }}
+          style={{ backgroundColor: `${data.color}40` }}
         >
           {data.status === 'running' ? (
-            <Loader2 className="w-4 h-4 animate-spin" style={{ color: data.color }} />
+            <Loader2 className="w-3 h-3 animate-spin" style={{ color: data.color }} />
           ) : data.status === 'success' ? (
-            <CheckCircle className="w-4 h-4 text-status-success" />
+            <CheckCircle className="w-3 h-3 text-status-success" />
           ) : data.status === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-status-error" />
+            <AlertCircle className="w-3 h-3 text-status-error" />
           ) : (
-            <IconComponent className="w-4 h-4" style={{ color: data.color }} />
+            <IconComponent className="w-3 h-3" style={{ color: data.color }} />
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{data.label}</p>
+          <p className="text-xs font-medium text-white truncate">{data.label}</p>
         </div>
+        <ChevronDown
+          className={`w-4 h-4 text-gray-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+        />
       </div>
 
-      {data.description && (
-        <div className="px-3 pb-3">
-          <p className="text-xs text-gray-400 line-clamp-2">{data.description}</p>
-        </div>
-      )}
+      {/* Body - Blender-style parameters */}
+      {!collapsed && (
+        <div className="p-2 space-y-2">
+          {/* Input Fields */}
+          {template?.fields?.inputs && template.fields.inputs.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1">Inputs</div>
+              {template.fields.inputs.slice(0, 3).map((field) => (
+                <div key={field.id} className="space-y-0.5">
+                  <label className="text-[11px] text-gray-300 px-1 flex items-center gap-1">
+                    {field.name}
+                    {field.required && <span className="text-status-error">*</span>}
+                  </label>
+                  {field.type === 'boolean' ? (
+                    <label className="flex items-center gap-2 px-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(data.inputValues?.[field.id])}
+                        onChange={(e) => updateNodeData(field.id, e.target.checked, 'input')}
+                        className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-accent-blue focus:ring-1 focus:ring-accent-blue"
+                      />
+                      <span className="text-[10px] text-gray-400">Enable</span>
+                    </label>
+                  ) : (
+                    <input
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      value={String(data.inputValues?.[field.id] || '')}
+                      onChange={(e) => updateNodeData(field.id, e.target.value, 'input')}
+                      placeholder={field.example || field.description}
+                      className="w-full px-2 py-1 text-[11px] bg-gray-800 border border-gray-700 rounded text-gray-200 placeholder-gray-500 focus:outline-none focus:border-accent-blue nodrag"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
-      {data.executionTime !== undefined && (
-        <div className="px-3 pb-2">
-          <p className="text-xs text-gray-500">{data.executionTime}ms</p>
-        </div>
-      )}
+          {/* Credentials */}
+          {template?.credentials && template.credentials.length > 0 && (
+            <div className="space-y-1.5 border-t border-gray-700 pt-2">
+              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1">Credentials</div>
+              {template.credentials.map((cred) => (
+                <div key={cred.id} className="space-y-0.5">
+                  <label className="text-[11px] text-gray-300 px-1 flex items-center gap-1">
+                    {cred.name}
+                    {cred.required && <span className="text-status-error">*</span>}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={cred.type}
+                      value={data.credentials?.[cred.id] || ''}
+                      onChange={(e) => updateNodeData(cred.id, e.target.value, 'credential')}
+                      placeholder={cred.placeholder || `Enter ${cred.name.toLowerCase()}`}
+                      className="w-full px-2 py-1 text-[11px] bg-gray-800 border border-gray-700 rounded text-gray-200 placeholder-gray-500 focus:outline-none focus:border-accent-blue nodrag"
+                    />
+                    {cred.type === 'password' && (
+                      <Lock className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-      {data.error && (
-        <div className="px-3 pb-3">
-          <p className="text-xs text-status-error truncate">{data.error}</p>
+          {/* Parameters */}
+          {template?.parameters && template.parameters.length > 0 && (
+            <div className="space-y-1.5 border-t border-gray-700 pt-2">
+              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1">Parameters</div>
+              {template.parameters.map((param) => (
+                <div key={param.id} className="space-y-0.5">
+                  <label className="text-[11px] text-gray-300 px-1 flex items-center gap-1">
+                    {param.name}
+                    {param.required && <span className="text-status-error">*</span>}
+                  </label>
+                  {param.type === 'select' && param.options ? (
+                    <select
+                      value={String(data.parameters?.[param.id] || param.default || '')}
+                      onChange={(e) => updateNodeData(param.id, e.target.value, 'parameter')}
+                      disabled={param.disabled}
+                      className="w-full px-2 py-1 text-[11px] bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:border-accent-blue nodrag disabled:opacity-50"
+                    >
+                      {param.options.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : param.type === 'boolean' ? (
+                    <label className="flex items-center gap-2 px-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(data.parameters?.[param.id] !== undefined ? data.parameters[param.id] : param.default)}
+                        onChange={(e) => updateNodeData(param.id, e.target.checked, 'parameter')}
+                        className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-accent-blue focus:ring-1 focus:ring-accent-blue"
+                      />
+                      <span className="text-[10px] text-gray-400">Enable</span>
+                    </label>
+                  ) : (
+                    <input
+                      type={param.type === 'number' ? 'number' : 'text'}
+                      value={String(data.parameters?.[param.id] !== undefined ? data.parameters[param.id] : param.default || '')}
+                      onChange={(e) => updateNodeData(param.id, param.type === 'number' ? parseFloat(e.target.value) : e.target.value, 'parameter')}
+                      placeholder={param.placeholder}
+                      className="w-full px-2 py-1 text-[11px] bg-gray-800 border border-gray-700 rounded text-gray-200 placeholder-gray-500 focus:outline-none focus:border-accent-blue nodrag"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Status indicators */}
+          {data.executionTime !== undefined && (
+            <div className="text-[10px] text-gray-500 px-1 pt-1 border-t border-gray-700">
+              ⚡ {data.executionTime}ms
+            </div>
+          )}
+
+          {data.error && (
+            <div className="text-[10px] text-status-error px-1 py-1 bg-red-900/20 rounded border border-red-900/40">
+              ⚠️ {data.error}
+            </div>
+          )}
         </div>
       )}
 
       <Handle
         type="source"
-        position={Position.Bottom}
-        className="!w-3 !h-3 !border-2 !border-gray-500 !bg-gray-700 hover:!border-accent-blue hover:!bg-accent-blue transition-all"
+        position={Position.Right}
+        className="!w-2 !h-2 !border-2 !border-gray-500 !bg-gray-700 hover:!border-accent-blue hover:!bg-accent-blue transition-all !-right-1"
       />
     </div>
   );
@@ -1366,7 +1592,7 @@ function NodeConfigModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <h3 className="text-label text-text-primary mb-3">Inputs</h3>
-                <div className="bg-app-bg rounded-lg p-3 space-y-2">
+                <div className="bg-[#1b1b1b] rounded-sm border-white p-3 space-y-2">
                   {template.fields.inputs.map(field => (
                     <div key={field.id} className="flex items-center justify-between text-small">
                       <span className="text-text-secondary">{field.name}</span>
@@ -1377,7 +1603,7 @@ function NodeConfigModal({
               </div>
               <div>
                 <h3 className="text-label text-text-primary mb-3">Outputs</h3>
-                <div className="bg-app-bg rounded-lg p-3 space-y-2">
+                <div className="bg-[#1b1b1b] rounded-sm p-3 space-y-2">
                   {template.fields.outputs.map(field => (
                     <div key={field.id} className="flex items-center justify-between text-small">
                       <span className="text-text-secondary">{field.name}</span>
@@ -1391,7 +1617,7 @@ function NodeConfigModal({
 
           {/* Test Result */}
           {testResult && (
-            <div className={`p-4 rounded-lg ${testResult.success ? 'bg-status-success/10 border border-status-success/30' : 'bg-status-error/10 border border-status-error/30'}`}>
+            <div className={`p-4 rounded-sm ${testResult.success ? 'bg-status-success/10 border border-status-success/30' : 'bg-status-error/10 border border-status-error/30'}`}>
               <div className="flex items-center gap-2">
                 {testResult.success ? (
                   <CheckCircle className="w-5 h-5 text-status-success" />
@@ -1697,11 +1923,10 @@ function FieldMapperModal({
                       draggable
                       onDragStart={() => setDraggingField(field.id)}
                       onDragEnd={() => setDraggingField(null)}
-                      className={`relative p-2 pr-8 rounded-md cursor-grab border transition-all group ${
-                        draggingField === field.id
-                          ? 'border-accent-blue bg-accent-blue/10 shadow-lg'
-                          : 'border-border hover:border-accent-blue/50 hover:bg-accent-blue/5'
-                      }`}
+                      className={`relative p-2 pr-8 rounded-md cursor-grab border transition-all group ${draggingField === field.id
+                        ? 'border-accent-blue bg-accent-blue/10 shadow-lg'
+                        : 'border-border hover:border-accent-blue/50 hover:bg-accent-blue/5'
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-small text-text-primary font-medium">{field.name}</span>
@@ -1716,11 +1941,10 @@ function FieldMapperModal({
                         <p className="text-xs text-text-tertiary mt-0.5 font-mono">e.g., {field.example}</p>
                       )}
                       {/* Connection handle */}
-                      <div className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-all ${
-                        draggingField === field.id
-                          ? 'border-accent-blue bg-accent-blue scale-125'
-                          : 'border-border bg-app-bg group-hover:border-accent-blue group-hover:scale-110'
-                      }`} />
+                      <div className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-all ${draggingField === field.id
+                        ? 'border-accent-blue bg-accent-blue scale-125'
+                        : 'border-border bg-app-bg group-hover:border-accent-blue group-hover:scale-110'
+                        }`} />
                     </div>
                   ))
                 )}
@@ -1730,9 +1954,8 @@ function FieldMapperModal({
             {/* Connection visual indicator */}
             <div className="flex flex-col items-center justify-center px-2">
               <div className={`transition-all ${draggingField ? 'animate-pulse' : ''}`}>
-                <ArrowRight className={`w-6 h-6 transition-colors ${
-                  draggingField ? 'text-accent-blue' : 'text-text-tertiary'
-                }`} />
+                <ArrowRight className={`w-6 h-6 transition-colors ${draggingField ? 'text-accent-blue' : 'text-text-tertiary'
+                  }`} />
               </div>
               {draggingField && (
                 <p className="text-xs text-accent-blue font-medium mt-2 text-center">
@@ -1768,22 +1991,20 @@ function FieldMapperModal({
                           onDragOver={e => e.preventDefault()}
                           onDrop={() => handleFieldDrop(field.id)}
                           onClick={() => setSelectedMapping(isSelected ? null : field.id)}
-                          className={`relative p-2 pl-8 rounded-md border transition-all cursor-pointer group ${
-                            mapping
-                              ? 'border-status-success/50 bg-status-success/5 hover:border-status-success'
-                              : isDragTarget
+                          className={`relative p-2 pl-8 rounded-md border transition-all cursor-pointer group ${mapping
+                            ? 'border-status-success/50 bg-status-success/5 hover:border-status-success'
+                            : isDragTarget
                               ? 'border-accent-blue border-dashed bg-accent-blue/10 animate-pulse'
                               : 'border-border hover:border-accent-blue/50 hover:bg-accent-blue/5'
-                          } ${isSelected ? 'ring-2 ring-accent-blue/50' : ''}`}
+                            } ${isSelected ? 'ring-2 ring-accent-blue/50' : ''}`}
                         >
                           {/* Connection handle - left side for drop target */}
-                          <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-all ${
-                            mapping
-                              ? 'border-status-success bg-status-success'
-                              : isDragTarget
+                          <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-all ${mapping
+                            ? 'border-status-success bg-status-success'
+                            : isDragTarget
                               ? 'border-accent-blue bg-accent-blue/20 scale-125 animate-pulse'
                               : 'border-border bg-app-bg group-hover:border-accent-blue group-hover:scale-110'
-                          }`} />
+                            }`} />
 
                           <div className="flex items-center justify-between">
                             <span className="text-small text-text-primary font-medium">
@@ -1828,82 +2049,82 @@ function FieldMapperModal({
                           )}
                         </div>
 
-                      {/* Expanded mapping editor */}
-                      {isSelected && mapping && (
-                        <div className="mt-2 p-3 bg-app-component rounded-lg border border-border-subtle">
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs text-text-tertiary block mb-1">Transformation Type</label>
-                              <select
-                                value={mapping.transformationType}
-                                onChange={(e) => updateMappingType(field.id, e.target.value as TransformationType)}
-                                className="form-select text-sm"
-                              >
-                                <option value="direct">Direct (1:1 mapping)</option>
-                                <option value="template">Template (with placeholders)</option>
-                                <option value="compose">Compose (multiple fields)</option>
-                                <option value="conditional">Conditional (if/else)</option>
-                                <option value="default">Default Value</option>
-                                <option value="format_date">Format Date</option>
-                                <option value="format_currency">Format Currency</option>
-                              </select>
-                            </div>
-
-                            {mapping.transformationType === 'direct' && (
+                        {/* Expanded mapping editor */}
+                        {isSelected && mapping && (
+                          <div className="mt-2 p-3 bg-app-component rounded-lg border border-border-subtle">
+                            <div className="space-y-3">
                               <div>
-                                <label className="text-xs text-text-tertiary block mb-1">Source Field</label>
+                                <label className="text-xs text-text-tertiary block mb-1">Transformation Type</label>
                                 <select
-                                  value={mapping.sourceField || ''}
-                                  onChange={(e) => setMappings(prev => prev.map(m =>
-                                    m.targetField === field.id ? { ...m, sourceField: e.target.value } : m
-                                  ))}
+                                  value={mapping.transformationType}
+                                  onChange={(e) => updateMappingType(field.id, e.target.value as TransformationType)}
                                   className="form-select text-sm"
                                 >
-                                  <option value="">Select field...</option>
-                                  {sourceTemplate.fields.outputs.map(f => (
-                                    <option key={f.id} value={f.id}>{f.name}</option>
-                                  ))}
+                                  <option value="direct">Direct (1:1 mapping)</option>
+                                  <option value="template">Template (with placeholders)</option>
+                                  <option value="compose">Compose (multiple fields)</option>
+                                  <option value="conditional">Conditional (if/else)</option>
+                                  <option value="default">Default Value</option>
+                                  <option value="format_date">Format Date</option>
+                                  <option value="format_currency">Format Currency</option>
                                 </select>
                               </div>
-                            )}
 
-                            {(mapping.transformationType === 'template' || mapping.transformationType === 'compose') && (
-                              <div>
-                                <label className="text-xs text-text-tertiary block mb-1">
-                                  Template (use {'{{field_name}}'} for variables)
-                                </label>
-                                <textarea
-                                  value={mapping.template || ''}
-                                  onChange={(e) => updateMappingTemplate(field.id, e.target.value)}
-                                  placeholder="e.g., Payment {{payment_id}} for {{amount}} {{currency}}"
-                                  className="form-input text-sm font-mono h-20"
-                                />
-                                <p className="text-xs text-text-tertiary mt-1">
-                                  Available: {sourceTemplate.fields.outputs.map(f => `{{${f.id}}}`).join(', ')}
-                                </p>
-                              </div>
-                            )}
+                              {mapping.transformationType === 'direct' && (
+                                <div>
+                                  <label className="text-xs text-text-tertiary block mb-1">Source Field</label>
+                                  <select
+                                    value={mapping.sourceField || ''}
+                                    onChange={(e) => setMappings(prev => prev.map(m =>
+                                      m.targetField === field.id ? { ...m, sourceField: e.target.value } : m
+                                    ))}
+                                    className="form-select text-sm"
+                                  >
+                                    <option value="">Select field...</option>
+                                    {sourceTemplate.fields.outputs.map(f => (
+                                      <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
 
-                            {mapping.transformationType === 'default' && (
-                              <div>
-                                <label className="text-xs text-text-tertiary block mb-1">Default Value</label>
-                                <input
-                                  type="text"
-                                  value={mapping.defaultValue || ''}
-                                  onChange={(e) => setMappings(prev => prev.map(m =>
-                                    m.targetField === field.id ? { ...m, defaultValue: e.target.value } : m
-                                  ))}
-                                  placeholder="Enter default value..."
-                                  className="form-input text-sm"
-                                />
-                              </div>
-                            )}
+                              {(mapping.transformationType === 'template' || mapping.transformationType === 'compose') && (
+                                <div>
+                                  <label className="text-xs text-text-tertiary block mb-1">
+                                    Template (use {'{{field_name}}'} for variables)
+                                  </label>
+                                  <textarea
+                                    value={mapping.template || ''}
+                                    onChange={(e) => updateMappingTemplate(field.id, e.target.value)}
+                                    placeholder="e.g., Payment {{payment_id}} for {{amount}} {{currency}}"
+                                    className="form-input text-sm font-mono h-20"
+                                  />
+                                  <p className="text-xs text-text-tertiary mt-1">
+                                    Available: {sourceTemplate.fields.outputs.map(f => `{{${f.id}}}`).join(', ')}
+                                  </p>
+                                </div>
+                              )}
+
+                              {mapping.transformationType === 'default' && (
+                                <div>
+                                  <label className="text-xs text-text-tertiary block mb-1">Default Value</label>
+                                  <input
+                                    type="text"
+                                    value={mapping.defaultValue || ''}
+                                    onChange={(e) => setMappings(prev => prev.map(m =>
+                                      m.targetField === field.id ? { ...m, defaultValue: e.target.value } : m
+                                    ))}
+                                    placeholder="Enter default value..."
+                                    className="form-input text-sm"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -2035,11 +2256,10 @@ function TemplatePalette({
           <button
             key={cat.id}
             onClick={() => setSelectedCategory(cat.id)}
-            className={`px-2 py-1 rounded text-tiny font-medium transition-colors ${
-              selectedCategory === cat.id
-                ? 'bg-accent-blue text-white'
-                : 'bg-app-component text-text-secondary hover:text-text-primary'
-            }`}
+            className={`px-2 py-1 rounded text-tiny font-medium transition-colors ${selectedCategory === cat.id
+              ? 'bg-accent-blue text-white'
+              : 'bg-app-component text-text-secondary hover:text-text-primary'
+              }`}
           >
             {cat.name}
           </button>
@@ -2274,6 +2494,17 @@ function EditorContent() {
 
   const projectName = searchParams.get('name') || 'Untitled Project';
 
+  // Load template on mount if template param exists
+  useEffect(() => {
+    const templateId = searchParams.get('template');
+    if (templateId && WORKFLOW_TEMPLATES[templateId]) {
+      const template = WORKFLOW_TEMPLATES[templateId];
+      setNodes(template.nodes);
+      setEdges(template.edges);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
   // Get template by ID
   const getTemplate = (templateId: string) => apiTemplates.find(t => t.id === templateId);
 
@@ -2390,15 +2621,15 @@ function EditorContent() {
       setNodes(nds => nds.map(n =>
         n.id === configModalNode.id
           ? {
-              ...n,
-              data: {
-                ...n.data,
-                credentials,
-                parameters,
-                ...(customInputsFields && { customInputs: customInputsFields }),
-                ...(customOutputsFields && { customOutputs: customOutputsFields }),
-              }
+            ...n,
+            data: {
+              ...n.data,
+              credentials,
+              parameters,
+              ...(customInputsFields && { customInputs: customInputsFields }),
+              ...(customOutputsFields && { customOutputs: customOutputsFields }),
             }
+          }
           : n
       ));
       setIsSaved(false);
@@ -2583,9 +2814,15 @@ function EditorContent() {
               elementsSelectable
               selectNodesOnDrag={false}
               defaultEdgeOptions={{
-                type: 'smoothstep',
-                style: { strokeWidth: 2, stroke: '#6B7280', strokeDasharray: '5,5' },
+                type: 'default',
+                style: { strokeWidth: 2, stroke: '#6B7280' },
                 animated: false,
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  width: 20,
+                  height: 20,
+                  color: '#6B7280',
+                },
               }}
               connectionLineStyle={{ strokeWidth: 2, stroke: '#3B82F6' }}
               style={{ backgroundColor: '#0D0D0D' }}
@@ -2594,7 +2831,7 @@ function EditorContent() {
                 variant={BackgroundVariant.Dots}
                 gap={24}
                 size={1.5}
-                color="#3A3A3A"
+                color="#6B7280"
               />
               <Controls className="!bg-app-panel !border-border !rounded-lg !shadow-dropdown" />
               <MiniMap

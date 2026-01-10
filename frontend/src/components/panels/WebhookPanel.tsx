@@ -267,11 +267,10 @@ function WebhookCard({
 }: WebhookCardProps) {
   return (
     <div
-      className={`rounded-lg border transition-all ${
-        !webhook.enabled
+      className={`rounded-lg border transition-all ${!webhook.enabled
           ? 'border-gray-700 bg-gray-800/30 opacity-60'
           : 'border-gray-700 bg-gray-800/50'
-      }`}
+        }`}
     >
       <div className="p-3">
         <div className="flex items-start justify-between mb-2">
@@ -301,21 +300,19 @@ function WebhookCard({
               className="sr-only"
             />
             <div
-              className={`w-8 h-4 rounded-full transition-colors ${
-                webhook.enabled ? 'bg-orange-600' : 'bg-gray-600'
-              }`}
+              className={`w-8 h-4 rounded-full transition-colors ${webhook.enabled ? 'bg-orange-600' : 'bg-gray-600'
+                }`}
             >
               <div
-                className={`w-3 h-3 rounded-full bg-white transition-transform mt-0.5 ${
-                  webhook.enabled ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'
-                }`}
+                className={`w-3 h-3 rounded-full bg-white transition-transform mt-0.5 ${webhook.enabled ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'
+                  }`}
               />
             </div>
           </label>
         </div>
 
         {/* Endpoint URL */}
-        <div className="flex items-center gap-2 p-2 bg-gray-900 rounded mb-3">
+        <div className="flex items-center gap-2 p-2 bg-black rounded mb-3">
           <Globe className="w-3 h-3 text-gray-500 flex-shrink-0" />
           <code className="text-xs text-gray-300 truncate flex-1">{webhook.endpointUrl}</code>
           <button
@@ -381,7 +378,7 @@ function WebhookCard({
           {webhook.secret && (
             <div className="mb-3">
               <label className="block text-xs text-gray-500 mb-1">Signing Secret</label>
-              <div className="flex items-center gap-2 p-2 bg-gray-900 rounded">
+              <div className="flex items-center gap-2 p-2 bg-black rounded">
                 <Shield className="w-3 h-3 text-gray-500 flex-shrink-0" />
                 <code className="text-xs text-gray-300 truncate flex-1">
                   {isSecretRevealed ? webhook.secret : '••••••••••••••••••••••'}
@@ -407,19 +404,19 @@ function WebhookCard({
           {/* Configuration */}
           <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
             {webhook.signatureAlgorithm && (
-              <div className="p-2 bg-gray-900 rounded">
+              <div className="p-2 bg-black rounded">
                 <span className="text-gray-500">Algorithm:</span>{' '}
                 <span className="text-white">{webhook.signatureAlgorithm}</span>
               </div>
             )}
             {webhook.signatureHeader && (
-              <div className="p-2 bg-gray-900 rounded">
+              <div className="p-2 bg-black rounded">
                 <span className="text-gray-500">Header:</span>{' '}
                 <span className="text-white">{webhook.signatureHeader}</span>
               </div>
             )}
             {webhook.allowedIps && webhook.allowedIps.length > 0 && (
-              <div className="p-2 bg-gray-900 rounded col-span-2">
+              <div className="p-2 bg-black rounded col-span-2">
                 <span className="text-gray-500">Allowed IPs:</span>{' '}
                 <span className="text-white">{webhook.allowedIps.join(', ')}</span>
               </div>
@@ -434,9 +431,8 @@ function WebhookCard({
                 {events.map((event) => (
                   <div
                     key={event.id}
-                    className={`flex items-center justify-between p-2 rounded text-xs ${
-                      event.verified ? 'bg-green-500/10' : 'bg-red-500/10'
-                    }`}
+                    className={`flex items-center justify-between p-2 rounded text-xs ${event.verified ? 'bg-green-500/10' : 'bg-red-500/10'
+                      }`}
                   >
                     <div className="flex items-center gap-2">
                       {event.verified ? (

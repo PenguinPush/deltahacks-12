@@ -21,12 +21,9 @@ import {
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-blue to-accent-blue-hover flex items-center justify-center">
-        <Link2 className="w-5 h-5 text-white" />
-      </div>
+
       <div>
-        <h1 className="text-lg font-semibold text-text-primary">NodeLink</h1>
-        <p className="text-tiny text-text-tertiary">Projects</p>
+        <h1 className="text-lg font-semibold text-text-primary"></h1>
       </div>
     </div>
   );
@@ -292,11 +289,10 @@ function NewProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
             <div className="space-y-3">
               {/* Start from Scratch */}
               <label
-                className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${
-                  mode === 'scratch'
-                    ? 'border-accent-blue bg-accent-blue/5'
-                    : 'border-border hover:border-border-hover'
-                }`}
+                className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${mode === 'scratch'
+                  ? 'border-accent-blue bg-accent-blue/5'
+                  : 'border-border hover:border-border-hover'
+                  }`}
               >
                 <input
                   type="radio"
@@ -320,11 +316,10 @@ function NewProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 
               {/* Use Template */}
               <label
-                className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${
-                  mode === 'template'
-                    ? 'border-accent-blue bg-accent-blue/5'
-                    : 'border-border hover:border-border-hover'
-                }`}
+                className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${mode === 'template'
+                  ? 'border-accent-blue bg-accent-blue/5'
+                  : 'border-border hover:border-border-hover'
+                  }`}
               >
                 <input
                   type="radio"
@@ -364,11 +359,10 @@ function NewProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-md text-small font-medium transition-colors ${
-                      selectedCategory === cat
-                        ? 'bg-accent-blue text-white'
-                        : 'bg-app-component text-text-secondary hover:text-text-primary'
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-small font-medium transition-colors ${selectedCategory === cat
+                      ? 'bg-accent-blue text-white'
+                      : 'bg-app-component text-text-secondary hover:text-text-primary'
+                      }`}
                   >
                     {cat}
                   </button>
@@ -381,11 +375,10 @@ function NewProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                   <button
                     key={template.id}
                     onClick={() => setSelectedTemplate(template.id)}
-                    className={`p-4 rounded-lg border text-left transition-all ${
-                      selectedTemplate === template.id
-                        ? 'border-accent-blue bg-accent-blue/5'
-                        : 'border-border hover:border-border-hover'
-                    }`}
+                    className={`p-4 rounded-lg border text-left transition-all ${selectedTemplate === template.id
+                      ? 'border-accent-blue bg-accent-blue/5'
+                      : 'border-border hover:border-border-hover'
+                      }`}
                   >
                     <div className="flex items-start gap-3 mb-3">
                       <TemplateIcon template={template} />
@@ -398,13 +391,12 @@ function NewProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                     </div>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`badge ${
-                          template.complexity === 'simple'
-                            ? 'badge-simple'
-                            : template.complexity === 'medium'
+                        className={`badge ${template.complexity === 'simple'
+                          ? 'badge-simple'
+                          : template.complexity === 'medium'
                             ? 'badge-medium'
                             : 'badge-complex'
-                        }`}
+                          }`}
                       >
                         {template.complexity}
                       </span>
@@ -432,7 +424,7 @@ function NewProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
           </div>
         </div>
 
-        <div className="modal-footer flex-shrink-0 border-t border-border bg-app-panel">
+        <div className="modal-footer flex-shrink-0 border-t border-border bg-black">
           <button onClick={onClose} className="btn-secondary">
             Cancel
           </button>
@@ -456,6 +448,12 @@ export function Dashboard() {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('rememberMe');
+    navigate('/login');
+  };
 
   // Filter and sort projects
   const filteredProjects = useMemo(() => {
@@ -490,7 +488,7 @@ export function Dashboard() {
       <header className="border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Logo />
-          <button className="btn-ghost text-small">
+          <button onClick={handleLogout} className="btn-ghost text-small">
             <LogOut className="w-4 h-4" />
             <span>Logout</span>
           </button>
@@ -501,7 +499,7 @@ export function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-hero text-text-primary mb-2">Welcome to NodeLink,</h2>
+          <h2 className="text-hero text bold italic text-text-primary mb-2">Welcome Justin,</h2>
           <p className="text-body text-text-secondary">
             Build and manage your API workflows visually
           </p>
@@ -560,36 +558,33 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Projects Grid */}
-        {filteredProjects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onOpen={() => navigate(`/editor/${project.id}`)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-full bg-app-component mx-auto mb-4 flex items-center justify-center">
-              <Link2 className="w-8 h-8 text-text-tertiary" />
+        {/* Projects Grid - White Border Container */}
+        <div className="border-2 border-white/20 mt-9 rounded-sm p-8 min-h-[400px]">
+          {filteredProjects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onOpen={() => navigate(`/editor/${project.id}`)}
+                />
+              ))}
             </div>
-            <h3 className="text-heading text-text-primary mb-2">
-              {searchQuery ? 'No projects found' : 'No projects yet'}
-            </h3>
-            <p className="text-body text-text-secondary mb-6">
-              {searchQuery
-                ? `No projects match "${searchQuery}"`
-                : 'Create your first API workflow to get started'}
-            </p>
-            <button onClick={() => setShowNewProjectModal(true)} className="btn-primary">
-              <Plus className="w-4 h-4" />
-              <span>New Project</span>
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="text-center my-24">
+
+              <h3 className="text-heading text-text-primary mb-2 text-center">
+                {searchQuery ? 'No projects found' : 'No projects yet'}
+              </h3>
+              <p className="text-body text-text-secondary mb-6">
+                {searchQuery
+                  ? `No projects match "${searchQuery}"`
+                  : 'Create your first API workflow to get started'}
+              </p>
+
+            </div>
+          )}
+        </div>
       </main>
 
       {/* New Project Modal */}

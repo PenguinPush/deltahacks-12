@@ -95,7 +95,7 @@ export function FieldMappingInput({
               {source.fields.length > 0 && (
                 <>
                   {/* Source header */}
-                  <div className="px-3 py-2 text-xs font-medium text-gray-400 bg-gray-900/50 border-b border-gray-700 flex items-center gap-2">
+                  <div className="px-3 py-2 text-xs font-medium text-gray-400 bg-black/50 border-b border-gray-700 flex items-center gap-2">
                     <Link2 className="w-3 h-3" />
                     {source.nodeLabel}
                   </div>

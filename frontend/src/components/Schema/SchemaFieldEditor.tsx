@@ -26,14 +26,14 @@ export function SchemaFieldEditor({ field, onChange, onDelete }: SchemaFieldEdit
         value={field.name}
         onChange={(e) => handleChange('name', e.target.value)}
         placeholder="field_name"
-        className="flex-1 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-sm text-gray-200 font-mono"
+        className="flex-1 px-2 py-1 bg-black border border-gray-700 rounded text-sm text-gray-200 font-mono"
       />
 
       {/* Field Type */}
       <select
         value={field.type}
         onChange={(e) => handleChange('type', e.target.value)}
-        className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-sm text-gray-200"
+        className="px-2 py-1 bg-black border border-gray-700 rounded text-sm text-gray-200"
       >
         {FIELD_TYPES.map((type) => (
           <option key={type} value={type}>

@@ -199,7 +199,7 @@ export function TestRunner({
       </div>
 
       {/* Result Section */}
-      <div className="flex-1 overflow-auto p-3 bg-gray-900">
+      <div className="flex-1 overflow-auto p-3 bg-black">
         {isExecuting && (
           <div className="flex items-center justify-center h-full">
             <Loader size="lg" />

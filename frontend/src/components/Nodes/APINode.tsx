@@ -73,7 +73,7 @@ function APINodeComponent({ id: _id, data, selected }: NodeProps<APINodeData>): 
       {/* Node Content */}
       <div className="workflow-node-content">
         {/* URL Display */}
-        <div className="flex items-center gap-2 p-2 bg-gray-900/50 rounded text-xs font-mono text-gray-400">
+        <div className="flex items-center gap-2 p-2 bg-black/50 rounded text-xs font-mono text-gray-400">
           <span className="truncate">{displayUrl(data.url)}</span>
         </div>
 

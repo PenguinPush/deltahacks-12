@@ -171,7 +171,7 @@ export function SchemaEditor({
       </div>
 
       {/* Content */}
-      <div className="p-3 bg-gray-900">
+      <div className="p-3 bg-black">
         {jsonMode ? (
           <div>
             <textarea

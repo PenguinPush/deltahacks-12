@@ -211,7 +211,7 @@ export function WorkflowCanvas(): JSX.Element {
         }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#374151" gap={16} size={1} />
+        <Background color="#FFFFFF" gap={16} size={1} />
         <Controls className="bg-canvas-surface border-gray-700" />
         <MiniMap
           className="bg-canvas-surface border-gray-700"

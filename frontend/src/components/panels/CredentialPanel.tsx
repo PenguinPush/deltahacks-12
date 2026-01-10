@@ -221,13 +221,12 @@ function CredentialCard({
 
   return (
     <div
-      className={`rounded-lg border transition-all ${
-        credential.isValid === false
+      className={`rounded-lg border transition-all ${credential.isValid === false
           ? 'border-red-500/50 bg-red-500/10'
           : credential.isValid
-          ? 'border-green-500/50 bg-green-500/10'
-          : 'border-gray-700 bg-gray-800/50'
-      }`}
+            ? 'border-green-500/50 bg-green-500/10'
+            : 'border-gray-700 bg-gray-800/50'
+        }`}
     >
       <div className="p-3">
         <div className="flex items-start justify-between mb-2">
@@ -254,7 +253,7 @@ function CredentialCard({
 
         {/* Masked Preview */}
         {Object.keys(maskedPreview).length > 0 && (
-          <div className="mb-3 p-2 bg-gray-900 rounded text-xs font-mono">
+          <div className="mb-3 p-2 bg-black rounded text-xs font-mono">
             {Object.entries(maskedPreview).slice(0, 3).map(([key, value]) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="text-gray-500">{key}:</span>

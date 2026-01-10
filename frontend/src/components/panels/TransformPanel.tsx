@@ -304,7 +304,7 @@ export function TransformPanel({ onTransformersChange, initialTransformers }: Tr
               <div className="space-y-2">
                 <div>
                   <label className="text-xs text-gray-500">Output:</label>
-                  <pre className="mt-1 p-3 bg-gray-900 rounded-lg text-sm text-gray-300 overflow-x-auto max-h-40">
+                  <pre className="mt-1 p-3 bg-black rounded-lg text-sm text-gray-300 overflow-x-auto max-h-40">
                     {JSON.stringify(preview.output, null, 2)}
                   </pre>
                 </div>
@@ -415,7 +415,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
             <select
               value={transformer.config.stringOperation || 'trim'}
               onChange={(e) => updateConfig({ stringOperation: e.target.value as TransformerConfig['stringOperation'] })}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
             >
               <option value="uppercase">Uppercase</option>
               <option value="lowercase">Lowercase</option>
@@ -434,7 +434,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
                 value={transformer.config.pattern || ''}
                 onChange={(e) => updateConfig({ pattern: e.target.value })}
                 placeholder="Pattern (regex)"
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
               />
             </div>
           )}
@@ -445,7 +445,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
                 type="text"
                 value={transformer.config.replacement || ''}
                 onChange={(e) => updateConfig({ replacement: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
               />
             </div>
           )}
@@ -460,7 +460,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
             <select
               value={transformer.config.numberOperation || 'round'}
               onChange={(e) => updateConfig({ numberOperation: e.target.value as TransformerConfig['numberOperation'] })}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
             >
               <option value="round">Round</option>
               <option value="floor">Floor</option>
@@ -493,7 +493,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
             <select
               value={transformer.config.outputFormat || 'ISO'}
               onChange={(e) => updateConfig({ outputFormat: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
             >
               <option value="ISO">ISO 8601</option>
               <option value="date">Local Date</option>
@@ -517,7 +517,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
             value={transformer.config.jsonPath || ''}
             onChange={(e) => updateConfig({ jsonPath: e.target.value })}
             placeholder="$.data.items[0].name"
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-purple-500"
           />
           <p className="text-xs text-gray-500 mt-1">Use $ to reference root, . for properties, [n] for arrays</p>
         </div>
@@ -531,7 +531,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
             value={transformer.config.template || ''}
             onChange={(e) => updateConfig({ template: e.target.value })}
             placeholder="Hello, {{name}}! Your order #{{orderId}} is ready."
-            className="w-full h-20 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-mono resize-none focus:outline-none focus:border-purple-500"
+            className="w-full h-20 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm font-mono resize-none focus:outline-none focus:border-purple-500"
           />
           <p className="text-xs text-gray-500 mt-1">Use {`{{field}}`} for placeholders, {`{{#if field}}...{{/if}}`} for conditionals</p>
         </div>
@@ -546,7 +546,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
             value={transformer.config.expression || ''}
             onChange={(e) => updateConfig({ expression: e.target.value })}
             placeholder="price * quantity * (1 - discount)"
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-purple-500"
           />
           <p className="text-xs text-gray-500 mt-1">Use field names as variables. Supports +, -, *, /, %, ()</p>
         </div>
@@ -562,7 +562,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
               value={transformer.config.condition || ''}
               onChange={(e) => updateConfig({ condition: e.target.value })}
               placeholder='status === "active"'
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-purple-500"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -572,7 +572,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
                 type="text"
                 value={String(transformer.config.thenValue ?? '')}
                 onChange={(e) => updateConfig({ thenValue: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
               />
             </div>
             <div>
@@ -581,7 +581,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
                 type="text"
                 value={String(transformer.config.elseValue ?? '')}
                 onChange={(e) => updateConfig({ elseValue: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
               />
             </div>
           </div>
@@ -596,7 +596,7 @@ function TransformerConfig({ transformer, onUpdate }: TransformerConfigProps) {
             value={transformer.config.code || ''}
             onChange={(e) => updateConfig({ code: e.target.value })}
             placeholder="// 'input' contains the incoming data\nreturn input.toUpperCase();"
-            className="w-full h-32 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-mono resize-none focus:outline-none focus:border-purple-500"
+            className="w-full h-32 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm font-mono resize-none focus:outline-none focus:border-purple-500"
           />
           <p className="text-xs text-gray-500 mt-1">Input is available as 'input' variable. Return the transformed value.</p>
         </div>

@@ -121,7 +121,7 @@ export function Modal({
       {/* Modal Content */}
       <div
         className={clsx(
-          'relative w-full mx-4 bg-gray-900 rounded-lg shadow-panel border border-gray-700',
+          'relative w-full mx-4 bg-black rounded-lg shadow-panel border border-gray-700',
           'overflow-hidden',
           SIZE_STYLES[size]
         )}
