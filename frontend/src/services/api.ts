@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError, type AxiosRequestConfig } from 'axios';
 import type { ApiResponse, ApiError } from '@/types';
+import { authHelpers } from '@/lib/supabase';
 
 /**
  * API Configuration
@@ -22,12 +23,27 @@ export const apiClient: AxiosInstance = axios.create({
  * Request interceptor for adding auth token
  */
 apiClient.interceptors.request.use(
-  (config) => {
-    // TODO: Add authentication token from auth store
-    // const token = useAuthStore.getState().token;
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+  async (config) => {
+    // Only add auth headers in browser context
+    if (typeof window !== 'undefined') {
+      try {
+        // Get current Supabase session
+        const { session, error } = await authHelpers.getSession();
+
+        if (!error && session) {
+          // Add JWT token to Authorization header
+          config.headers.Authorization = `Bearer ${session.access_token}`;
+
+          // Add user ID to X-User-ID header
+          if (session.user?.id) {
+            config.headers['X-User-ID'] = session.user.id;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to get session for API request:', error);
+      }
+    }
+
     return config;
   },
   (error) => {
