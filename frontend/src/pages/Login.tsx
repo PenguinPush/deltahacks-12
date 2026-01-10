@@ -1,23 +1,22 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Login Page Component
- * 
+ *
  * Features:
- * - Email/password authentication
+ * - Email/password authentication via Supabase
  * - Social login options (Google, GitHub)
- * - Remember me functionality
  * - Password visibility toggle
  * - Error handling
  * - Responsive split-screen design
  */
 export function Login() {
-    const navigate = useNavigate();
+    const { signIn } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -27,25 +26,18 @@ export function Login() {
         setError('');
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            if (email && password) {
-                // Set authentication token
-                localStorage.setItem('authToken', 'mock-token-' + Date.now());
-                if (rememberMe) {
-                    localStorage.setItem('rememberMe', 'true');
-                }
-                navigate('/dashboard');
-            } else {
-                setError('Please enter valid credentials');
-            }
+        try {
+            await signIn(email, password);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to sign in. Please check your credentials.');
+        } finally {
             setIsLoading(false);
-        }, 1000);
+        }
     };
 
     const handleSocialLogin = (provider: 'google' | 'github') => {
         console.log(`Login with ${provider}`);
-        // Implement social login
+        // TODO: Implement social login with Supabase
     };
 
     return (
@@ -153,17 +145,8 @@ export function Login() {
                             </div>
                         </div>
 
-                        {/* Remember Me & Forgot Password */}
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded border-border bg-app-input accent-accent-blue"
-                                />
-                                <span className="text-small text-text-secondary">Remember me</span>
-                            </label>
+                        {/* Forgot Password */}
+                        <div className="flex items-center justify-end">
                             <Link
                                 to="/forgot-password"
                                 className="text-small text-accent-blue hover:text-accent-blue-hover transition-colors"
