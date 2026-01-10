@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Dashboard } from '@/pages/Dashboard';
-import { Editor } from '@/pages/Editor';
-import { Login, SignUp } from '@/pages';
+import { Dashboard } from '@/views/Dashboard';
+import { Editor } from '@/views/Editor';
+import { Login, SignUp } from '@/views';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 /**
