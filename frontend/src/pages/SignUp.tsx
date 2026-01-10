@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Sign Up Page Component
- * 
+ *
  * Features:
- * - Email/password registration
+ * - Email/password registration via Supabase
  * - Social signup options (Google, GitHub)
  * - Password strength indicator
  * - Password visibility toggle
@@ -15,7 +16,7 @@ import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide
  * - Responsive split-screen design
  */
 export function SignUp() {
-    const navigate = useNavigate();
+    const { signUp } = useAuth();
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -67,22 +68,18 @@ export function SignUp() {
 
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            if (formData.email && formData.password && formData.fullName) {
-                // Set authentication token
-                localStorage.setItem('authToken', 'mock-token-' + Date.now());
-                navigate('/dashboard');
-            } else {
-                setError('Please fill in all fields');
-            }
+        try {
+            await signUp(formData.email, formData.password, formData.fullName);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create account. Please try again.');
+        } finally {
             setIsLoading(false);
-        }, 1000);
+        }
     };
 
     const handleSocialSignup = (provider: 'google' | 'github') => {
         console.log(`Sign up with ${provider}`);
-        // Implement social signup
+        // TODO: Implement social signup with Supabase
     };
 
     const updateFormData = (field: string, value: string) => {
