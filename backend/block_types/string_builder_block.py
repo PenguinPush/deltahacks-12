@@ -1,45 +1,64 @@
-from blocks import Block
+import re
+from backend.blocks import Block
+from typing import Set
 
 class StringBuilderBlock(Block):
     """
-    Block to concatenate strings or insert data into a template.
-    Useful for building prompts.
+    A block that builds a string from a template and inputs.
+    It dynamically creates input ports based on placeholders in the template string.
+    e.g., "Hello {name}" will create an input port named "name".
     """
     def __init__(self, name: str, template: str = ""):
         super().__init__(name, block_type="STRING_BUILDER")
-        self.template = template # e.g., "Hello {name}, your score is {score}"
-        
-        # We can dynamically register inputs based on the template, 
-        # but for simplicity, we'll allow a fixed set of inputs or a dictionary input.
-        # Here, we'll use a generic 'variables' input which expects a dictionary,
-        # AND specific named inputs for common use cases.
-        
-        self.register_input("template", template) # Allow overriding template at runtime
-        self.register_input("var_1")
-        self.register_input("var_2")
-        self.register_input("var_3")
-        self.register_output("result")
+        self._template = ""
+        self.register_output("result", data_type="string")
+        # Use the property setter to parse the initial template
+        self.template = template
+
+    @property
+    def template(self) -> str:
+        """Gets the template string."""
+        return self._template
+
+    @template.setter
+    def template(self, new_template: str):
+        """Sets the template string and updates inputs accordingly."""
+        self._template = new_template
+        self._update_inputs_from_template()
+
+    def _update_inputs_from_template(self):
+        """
+        Parses the template to find placeholders and registers them as inputs.
+        """
+        # Find all placeholders like {var_name}
+        placeholders: Set[str] = set(re.findall(r'\{(\w+)\}', self._template))
+
+        current_inputs: Set[str] = set(self.inputs.keys())
+
+        # Inputs to add
+        new_inputs = placeholders - current_inputs
+        for key in new_inputs:
+            self.register_input(key, data_type="any")
 
     def execute(self):
-        tmpl = self.inputs.get("template", "")
-        
-        # Collect available variables
-        # In a more advanced version, we could parse the template to find required keys.
-        # For now, we just support {var_1}, {var_2}, {var_3}
-        
-        format_args = {}
-        if self.inputs.get("var_1") is not None:
-            format_args["var_1"] = self.inputs["var_1"]
-        if self.inputs.get("var_2") is not None:
-            format_args["var_2"] = self.inputs["var_2"]
-        if self.inputs.get("var_3") is not None:
-            format_args["var_3"] = self.inputs["var_3"]
-            
+        """
+        Formats the template string with the values from the input ports.
+        """
         try:
-            # Use python's format string syntax
-            # e.g. "User {var_1} said {var_2}"
-            self.outputs["result"] = tmpl.format(**format_args)
-        except KeyError as e:
-            self.outputs["result"] = f"Error: Missing variable {str(e)}"
-        except Exception as e:
-            self.outputs["result"] = f"Error: {str(e)}"
+            # self.inputs already has fetched values from `fetch_inputs()`
+            self.outputs["result"] = self.template.format(**self.inputs)
+        except (KeyError, TypeError):
+            # This can happen if an input is not connected and has no manual value (is None).
+            # We can provide a more graceful failure by filling them with empty strings.
+            filled_inputs = self.inputs.copy()
+            for key in re.findall(r'\{(\w+)\}', self.template):
+                if filled_inputs.get(key) is None:
+                    filled_inputs[key] = "" # Default to empty string if not provided
+
+            self.outputs["result"] = self.template.format(**filled_inputs)
+
+    def to_dict(self):
+        """Adds the template to the serialized block data."""
+        data = super().to_dict()
+        data["template"] = self.template
+        return data

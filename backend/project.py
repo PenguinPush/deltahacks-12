@@ -7,6 +7,7 @@ from block_types.api_block import APIBlock
 from block_types.logic_block import LogicBlock
 from block_types.react_block import ReactBlock
 from block_types.transform_block import TransformBlock
+from block_types.start_block import StartBlock
 from block_types.string_builder_block import StringBuilderBlock
 
 class Project:
@@ -114,6 +115,8 @@ class Project:
                 block = TransformBlock(name, block_data.get("transformation_type", "to_string"))
             elif b_type == "STRING_BUILDER":
                 block = StringBuilderBlock(name, block_data.get("template", ""))
+            elif b_type == "START":
+                block = StartBlock(name)
             
             if block:
                 # Restore base properties
@@ -130,9 +133,11 @@ class Project:
                 
                 # Restore inputs (static values)
                 if "inputs" in block_data:
-                    for k, v in block_data["inputs"].items():
-                        if k in block.inputs:
-                            block.inputs[k] = v
+                    for input_data in block_data["inputs"]:
+                        key = input_data.get("key")
+                        value = input_data.get("value")
+                        if key and key in block.inputs:
+                            block.inputs[key] = value
                 
                 project.add_block(block)
                 id_map[block.id] = block

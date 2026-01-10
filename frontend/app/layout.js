@@ -1,8 +1,9 @@
-import "./globals.css";
+import 'reactflow/dist/style.css';
+import './globals.css';
 
 export const metadata = {
-  title: "Block Flow",
-  description: "Visual API Block Builder",
+  title: 'Flow Builder',
+  description: 'A visual programming interface',
 };
 
 export default function RootLayout({ children }) {
