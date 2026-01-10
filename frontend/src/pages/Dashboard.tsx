@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Globe,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Logo component
 function Logo() {
@@ -444,15 +445,18 @@ function NewProjectModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 // Main Dashboard Component
 export function Dashboard() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('rememberMe');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+    }
   };
 
   // Filter and sort projects
@@ -499,7 +503,9 @@ export function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-hero text bold italic text-text-primary mb-2">Welcome Justin,</h2>
+          <h2 className="text-hero text bold italic text-text-primary mb-2">
+            Welcome {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'},
+          </h2>
           <p className="text-body text-text-secondary">
             Build and manage your API workflows visually
           </p>
