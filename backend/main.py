@@ -151,8 +151,14 @@ def ensure_user_exists(user_id):
 def run_graph():
     """
     Endpoint to trigger graph execution.
+    Note: For MVP, this still uses in-memory project.
+    TODO: Load workflow from MongoDB by workflow_id
     """
     global current_project
+
+    # Optional: Get user_id for future use
+    user_id = get_user_id_from_request()
+
     if not current_project.blocks:
         return jsonify({"error": "No graph defined"}), 400
 
@@ -529,6 +535,142 @@ def get_current_user():
             return jsonify({"error": "User not found"}), 404
 
         return jsonify(user), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==========================================
+# PART 4: Workflow Management (MongoDB-backed)
+# ==========================================
+
+@app.route('/api/workflows', methods=['GET'])
+def get_workflows():
+    """
+    Get all workflows for the current user.
+    Expects header: X-User-ID
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID not provided"}), 401
+
+        # Ensure user exists (lazy creation)
+        ensure_user_exists(user_id)
+
+        workflows = mongodb.get_user_workflows(user_id)
+
+        return jsonify({"workflows": workflows}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/workflows', methods=['POST'])
+def create_workflow():
+    """
+    Create a new workflow.
+    Expects header: X-User-ID
+    Expects JSON: { "name": "...", "description": "..." }
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID not provided"}), 401
+
+        data = request.json
+        name = data.get('name', 'Untitled Workflow')
+        description = data.get('description', '')
+
+        # Ensure user exists
+        ensure_user_exists(user_id)
+
+        workflow = mongodb.create_workflow(user_id, name, description)
+
+        return jsonify(workflow), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/workflows/<workflow_id>', methods=['GET'])
+def get_workflow(workflow_id):
+    """
+    Get a specific workflow.
+    Expects header: X-User-ID
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID not provided"}), 401
+
+        workflow = mongodb.get_workflow(workflow_id, user_id)
+
+        if not workflow:
+            return jsonify({"error": "Workflow not found or access denied"}), 404
+
+        return jsonify(workflow), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/workflows/<workflow_id>', methods=['PUT'])
+def update_workflow_endpoint(workflow_id):
+    """
+    Update a workflow.
+    Expects header: X-User-ID
+    Expects JSON: { "name": "...", "nodes": [...], "edges": [...] }
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID not provided"}), 401
+
+        data = request.json
+        updates = {}
+
+        if 'name' in data:
+            updates['name'] = data['name']
+        if 'description' in data:
+            updates['description'] = data['description']
+        if 'nodes' in data:
+            updates['nodes'] = data['nodes']
+        if 'edges' in data:
+            updates['edges'] = data['edges']
+        if 'viewport' in data:
+            updates['viewport'] = data['viewport']
+
+        result = mongodb.update_workflow(workflow_id, user_id, updates)
+
+        if result.matched_count == 0:
+            return jsonify({"error": "Workflow not found or access denied"}), 404
+
+        # Return updated workflow
+        workflow = mongodb.get_workflow(workflow_id, user_id)
+        return jsonify(workflow), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/workflows/<workflow_id>', methods=['DELETE'])
+def delete_workflow_endpoint(workflow_id):
+    """
+    Delete a workflow.
+    Expects header: X-User-ID
+    """
+    try:
+        user_id = get_user_id_from_request()
+
+        if not user_id:
+            return jsonify({"error": "User ID not provided"}), 401
+
+        result = mongodb.delete_workflow(workflow_id, user_id)
+
+        if result.deleted_count == 0:
+            return jsonify({"error": "Workflow not found or access denied"}), 404
+
+        return jsonify({"success": True}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
