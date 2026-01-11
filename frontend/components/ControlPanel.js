@@ -3,8 +3,7 @@ import { useStore } from '../lib/store';
 import Image from 'next/image';
 
 const ControlPanel = () => {
-  const { addBlock, executeGraph, executionResult, saveProject, loadProject, apiSchemas } = useStore();
-  const fileInputRef = useRef(null);
+  const { addBlock, apiSchemas } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
 
   const onDragStart = (event, blockData) => {
@@ -13,7 +12,7 @@ const ControlPanel = () => {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const standardBlockTypes = [
+  const logicBlockTypes = [
     { type: 'START', name: 'Start', description: 'Begins a flow execution.', icon: '/play.svg' },
     { type: 'REACT', name: 'React I/O', description: 'Interface with the UI.', icon: '/user.svg' },
     { type: 'STRING_BUILDER', name: 'String Builder', description: 'Formats text with variables.', icon: '/text.svg' },
@@ -26,35 +25,13 @@ const ControlPanel = () => {
       schema.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-  const handleLoadClick = () => {
-    // Programmatically click the hidden file input
-    fileInputRef.current.click();
-  };
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const projectData = JSON.parse(e.target.result);
-        loadProject(projectData);
-      } catch (error) {
-        console.error("Error parsing project file:", error);
-        alert("Invalid project file. Please select a valid JSON file.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
   return (
-    <aside className="control-panel">
-      <h3>Controls</h3>
+    <aside className="control-panel" onDrop={(e) => e.preventDefault()}>
+      <h3>Blocks</h3>
       <div className="controls-section">
         <h4>Logic Blocks</h4>
         <div className="block-list">
-          {standardBlockTypes.map(block => (
+          {logicBlockTypes.map(block => (
             <div 
               key={block.type} 
               className="block-list-item" 
@@ -99,30 +76,6 @@ const ControlPanel = () => {
             </div>
           ))}
         </div>
-      </div>
-      <div className="controls-section">
-        <h4>Project</h4>
-        <button onClick={saveProject}>Save Project</button>
-        <button onClick={handleLoadClick}>Load Project</button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-          accept=".json,application/json"
-        />
-      </div>
-      <div className="controls-section">
-        <h4>Execution</h4>
-        <button onClick={executeGraph} className="execute-button">
-          Run Graph
-        </button>
-        {executionResult && (
-          <div className="results-box">
-            <h4>Result</h4>
-            <pre>{executionResult}</pre>
-          </div>
-        )}
       </div>
     </aside>
   );

@@ -5,8 +5,8 @@ class ReactBlock(Block):
     A special block that can both display data from the graph and provide
     user-entered data back into the graph.
     """
-    def __init__(self, name: str):
-        super().__init__(name, block_type="REACT")
+    def __init__(self, name: str, x: float = 0.0, y: float = 0.0):
+        super().__init__(name, block_type="REACT", x=x, y=y)
         
         # Input to trigger execution if this block is part of a larger flow
         self.register_input("trigger", data_type="any", hidden=True)

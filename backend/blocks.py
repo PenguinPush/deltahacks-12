@@ -94,6 +94,14 @@ class Block(ABC):
         if input_key not in target_block.inputs:
             raise ValueError(f"Input '{input_key}' not found in target block '{target_block.name}'")
         
+        # Ensure the input only has one connection: remove existing if present
+        existing_connector = target_block.input_connectors.get(input_key)
+        if existing_connector:
+            # Remove this connector from the previous source block's outputs
+            prev_source = existing_connector.source_block
+            if existing_connector in prev_source.output_connectors[existing_connector.source_output_key]:
+                prev_source.output_connectors[existing_connector.source_output_key].remove(existing_connector)
+
         connector = Connector(self, output_key, target_block, input_key, modifier)
         self.output_connectors[output_key].append(connector)
         target_block.input_connectors[input_key] = connector

@@ -60,7 +60,7 @@ def execute_graph(start_blocks: list[Block], all_blocks_map: dict[str, Block]):
     while ready_queue:
         current_block_id = ready_queue.popleft()
         current_block = block_map[current_block_id]
-        execution_order.append(current_block.name)
+        execution_order.append(current_block.id)
         
         # Fetch inputs from upstream blocks
         current_block.fetch_inputs()
@@ -69,6 +69,7 @@ def execute_graph(start_blocks: list[Block], all_blocks_map: dict[str, Block]):
         try:
             print(f"Executing {current_block.name}...")
             current_block.execute()
+            print(f"Result ({current_block.name}): {current_block.outputs}")
             # Store results after successful execution
             results[current_block.id] = {
                 "name": current_block.name,
@@ -170,7 +171,7 @@ def add_block():
         if block_type == "API":
             # Default to custom if not specified
             schema_key = data.get("schema_key", "custom")
-            new_block = APIBlock(name, schema_key)
+            new_block = APIBlock(name, schema_key, x=x, y=y)
             # If custom, allow overriding url/method
             if schema_key == "custom":
                 if "url" in data: new_block.url = data["url"]
@@ -178,22 +179,21 @@ def add_block():
                 
         elif block_type == "LOGIC":
             operation = data.get("operation", "add")
-            new_block = LogicBlock(name, operation)
+            new_block = LogicBlock(name, operation, x=x, y=y)
         elif block_type == "REACT":
-            new_block = ReactBlock(name)
+            new_block = ReactBlock(name, x=x, y=y)
         elif block_type == "TRANSFORM":
             t_type = data.get("transformation_type", "to_string")
-            new_block = TransformBlock(name, t_type)
+            fields = data.get("fields", "")
+            new_block = TransformBlock(name, t_type, fields=fields, x=x, y=y)
         elif block_type == "STRING_BUILDER":
             template = data.get("template", "")
-            new_block = StringBuilderBlock(name, template)
+            new_block = StringBuilderBlock(name, template, x=x, y=y)
         elif block_type == "START":
-            new_block = StartBlock(name)
+            new_block = StartBlock(name, x=x, y=y)
         else:
             return jsonify({"error": f"Unknown block type: {block_type}"}), 400
             
-        new_block.x = x
-        new_block.y = y
         current_project.add_block(new_block)
         
         return jsonify({
@@ -253,6 +253,8 @@ def update_block():
     elif isinstance(block, TransformBlock):
         if "transformation_type" in data:
             block.transformation_type = data["transformation_type"]
+        if "fields" in data:
+            block.fields = data["fields"]
     elif isinstance(block, StringBuilderBlock):
         if "template" in data:
             block.template = data["template"]
@@ -410,31 +412,6 @@ def setup_demo_project():
     Sets up a sample project demonstrating a clear API flow.
     """
     proj = Project("API Demo Project")
-
-    # A StartBlock to explicitly begin the execution flow.
-    start_block = StartBlock()
-    start_block.x = 50
-    start_block.y = 200
-
-    # An API block to get a cat fact. It needs to be triggered.
-    api_block = APIBlock("Get Cat Fact", schema_key="cat_fact")
-    api_block.x = 250
-    api_block.y = 150
-
-    # A final block to display the result.
-    react_display_block = ReactBlock("Result Display")
-    react_display_block.x = 550
-    react_display_block.y = 200
-
-    proj.add_block(start_block)
-    proj.add_block(api_block)
-    proj.add_block(react_display_block)
-
-    # Connect the control/data flow:
-    # 1. Start block triggers the API block.
-    start_block.connect("start_signal", api_block, "trigger")
-    # 2. API block provides the 'fact' output to the Display block.
-    api_block.connect("fact", react_display_block, "display_data")
     
     return proj
 

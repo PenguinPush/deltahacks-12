@@ -9,8 +9,8 @@ class APIBlock(Block):
     A block that makes an HTTP request to an API, with dynamically
     configurable inputs and outputs based on a selected schema.
     """
-    def __init__(self, name: str, schema_key: str = "custom"):
-        super().__init__(name, block_type="API")
+    def __init__(self, name: str, schema_key: str = "custom", x: float = 0.0, y: float = 0.0):
+        super().__init__(name, block_type="API", x=x, y=y)
         
         # Add a trigger input to ensure execution is always intentional
         self.register_input("trigger", data_type="any", hidden=True)
@@ -49,7 +49,7 @@ class APIBlock(Block):
                 self.register_input(key, data_type=meta.get("type", "any"), default_value=meta.get("default"))
         else:
             # Handling for structured schemas
-            for input_type in ["path", "params", "body"]:
+            for input_type in ["path", "params", "body", "headers"]:
                 for key, meta in schema_inputs.get(input_type, {}).items():
                     self.register_input(key, data_type=meta.get("type", "any"), default_value=meta.get("default"))
 
@@ -62,6 +62,14 @@ class APIBlock(Block):
         # Reset all outputs
         for key in self.outputs:
             self.outputs[key] = None
+
+        # Check trigger input. If connected and False/None, skip execution.
+        # We check if 'trigger' is in inputs. If it's not connected, it might be None depending on fetch_inputs.
+        # However, usually we want to run if NOT connected, or if connected and True.
+        # But for explicit control flow, if it receives explicit False, it should stop.
+        if self.inputs.get("trigger") is False:
+            self.outputs['error'] = "Skipped: Trigger condition not met."
+            return
 
         schema = API_SCHEMAS.get(self.schema_key, API_SCHEMAS["custom"])
         
@@ -89,6 +97,7 @@ class APIBlock(Block):
             # Gather query params and body data
             params = {key: self.inputs.get(key) for key in schema_inputs.get("params", {}) if self.inputs.get(key) is not None}
             body = {key: self.inputs.get(key) for key in schema_inputs.get("body", {}) if self.inputs.get(key) is not None}
+            headers = {key: self.inputs.get(key) for key in schema_inputs.get("headers", {}) if self.inputs.get(key) is not None}
 
         # --- Validation ---
         if not url or not url.strip():

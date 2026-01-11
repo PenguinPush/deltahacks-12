@@ -3,7 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { useStore } from '../lib/store';
 
 const CustomNode = ({ data }) => {
-  const { updateNode, updateInputValue, edges, togglePortVisibility, apiSchemas } = useStore();
+  const { updateNode, updateInputValue, edges, togglePortVisibility, apiSchemas, removeBlock } = useStore();
 
   const handleNameChange = (e) => {
     updateNode(data.id, { name: e.target.value });
@@ -11,6 +11,18 @@ const CustomNode = ({ data }) => {
 
   const handleTemplateChange = (e) => {
     updateNode(data.id, { template: e.target.value });
+  };
+
+  const handleTransformTypeChange = (e) => {
+    updateNode(data.id, { transformation_type: e.target.value });
+  };
+
+  const handleLogicOperationChange = (e) => {
+    updateNode(data.id, { operation: e.target.value });
+  };
+
+  const handleFieldsChange = (e) => {
+    updateNode(data.id, { fields: e.target.value });
   };
 
   // The menu component, rendered conditionally
@@ -56,7 +68,12 @@ const CustomNode = ({ data }) => {
               checked={!data.hidden_outputs?.includes(port.key)}
               onChange={() => togglePortVisibility(data.id, port.key, 'output')}
             />
-            <label htmlFor={`vis-out-${data.id}-${port.key}`}>{port.key}</label>
+            <label htmlFor={`vis-out-${data.id}-${port.key}`} style={{ flexGrow: 1 }}>{port.key}</label>
+            {port.value !== undefined && port.value !== null && (
+              <span className="port-value-compact" title={typeof port.value === 'object' ? JSON.stringify(port.value, null, 2) : String(port.value)}>
+                {typeof port.value === 'object' ? JSON.stringify(port.value) : String(port.value)}
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -108,10 +125,14 @@ const CustomNode = ({ data }) => {
           onBlur={handleNameChange}
           className="nodrag node-name-input"
         />
-        <span className="node-type">{data.type}</span>
+        {data.menu_open ? (
+          <button className="delete-button nodrag" onClick={() => removeBlock(data.id)} title="Delete Block">
+            &times;
+          </button>
+        ) : (
+          <span className="node-type">{data.type}</span>
+        )}
       </div>
-
-      {data.menu_open && <SettingsMenu />}
 
       <div className="node-body">
         <div className="node-ports">
@@ -141,7 +162,62 @@ const CustomNode = ({ data }) => {
             />
           </div>
         )}
+
+        {data.type === 'TRANSFORM' && (
+          <div className="node-config">
+            <label>Type</label>
+            <select 
+              className="nodrag"
+              value={data.transformation_type}
+              onChange={handleTransformTypeChange}
+              style={{ width: '100%', marginBottom: '5px' }}
+            >
+              <option value="to_string">To String</option>
+              <option value="to_json">To JSON</option>
+              <option value="params_to_json">Params to JSON</option>
+              <option value="json_to_params">JSON to Params</option>
+            </select>
+            {(data.transformation_type === 'params_to_json' || data.transformation_type === 'json_to_params') && (
+              <>
+                <label>Fields (comma separated)</label>
+                <input 
+                  type="text"
+                  className="nodrag"
+                  defaultValue={data.fields}
+                  onBlur={handleFieldsChange}
+                  placeholder="e.g. name, age"
+                  style={{ width: '100%' }}
+                />
+              </>
+            )}
+          </div>
+        )}
+
+        {data.type === 'LOGIC' && (
+          <div className="node-config">
+            <label>Operation</label>
+            <select 
+              className="nodrag"
+              value={data.operation}
+              onChange={handleLogicOperationChange}
+              style={{ width: '100%', marginBottom: '5px' }}
+            >
+              <option value="add">Add (+)</option>
+              <option value="subtract">Subtract (-)</option>
+              <option value="multiply">Multiply (*)</option>
+              <option value="divide">Divide (/)</option>
+              <option value="equals">Equals (==)</option>
+              <option value="not_equals">Not Equals (!=)</option>
+              <option value="greater_than">Greater Than (&gt;)</option>
+              <option value="less_than">Less Than (&lt;)</option>
+              <option value="and">AND</option>
+              <option value="or">OR</option>
+            </select>
+          </div>
+        )}
       </div>
+
+      {data.menu_open && <SettingsMenu />}
     </div>
   );
 };
