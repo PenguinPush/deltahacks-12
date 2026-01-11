@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from auth_middleware import require_auth, get_user_id_from_token
+from auth_middleware import require_auth
 from project import Project
 import logging
 
@@ -19,23 +19,21 @@ def create_project(current_user):
         data = request.json
         project_name = data.get("name", "New Project")
         
-        # Create a new project instance
-        new_project = Project(project_name)
-        
-        # Save it to the database, associated with the user
-        # We assume `save_to_db` is updated to take a user_id
-        project_id = new_project.save_to_db(user_id=user_id)
-        
-        logger.info(f"User '{user_id}' created project '{project_name}' ({project_id})")
-        
+        from user_service import UserService
+        project = UserService.create_project(user_id, project_name)
+
+        logger.info(f"User '{user_id}' created project '{project_name}' ({project.get('project_id')})")
+
         return jsonify({
             "status": "created",
-            "project_id": str(project_id), # Ensure project_id is a string
-            "project_name": new_project.name
+            "project_id": str(project.get('project_id')),
+            "project_name": project.get('name')
         }), 201
 
     except Exception as e:
-        logger.error(f"Error creating project for user '{user_id}': {e}", exc_info=True)
+        # Check if user_id is defined before using it in logger
+        uid = current_user.get('sub') if 'current_user' in locals() else 'unknown'
+        logger.error(f"Error creating project for user '{uid}': {e}", exc_info=True)
         return jsonify({"error": "Failed to create project on server"}), 500
 
 @api_v2.route('/projects', methods=['GET'])
@@ -44,9 +42,14 @@ def get_projects(current_user):
     """Lists all projects for the authenticated user."""
     try:
         user_id = current_user.get('sub')
-        # We assume `list_all_projects` is updated to filter by user_id
-        projects = Project.list_all_projects(user_id=user_id)
-        return jsonify({"projects": projects})
+        from user_service import UserService
+        projects = UserService.get_all_projects(user_id)
+
+        # Transform for frontend if needed, or return as is
+        # UserService returns list of project dicts
+
+        return jsonify({"projects": projects}), 200
     except Exception as e:
-        logger.error(f"Error listing projects for user '{user_id}': {e}", exc_info=True)
-        return jsonify({"error": "Failed to list projects"}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to list projects: {str(e)}"}), 500

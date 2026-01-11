@@ -13,6 +13,10 @@ import {
   Sparkles,
   MessageSquare,
   Globe,
+  MoreVertical,
+  Clock,
+  ArrowRight,
+  Link2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { projectService, workflowService, type Project as ApiProject } from '@/services/projects';
