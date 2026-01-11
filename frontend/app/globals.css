@@ -660,6 +660,13 @@ input, textarea, select, button {
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
 }
 
+.react-ide-panel.collapsed {
+    width: 30px;
+    min-width: 30px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
 .ide-header {
     display: flex;
     justify-content: space-between;
@@ -759,7 +766,7 @@ input, textarea, select, button {
 /* AI Assistant Chat */
 .ai-assistant-container {
   background-color: var(--surface-color);
-  padding: 8px 15px;
+  padding: 5px 10px;
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid var(--border-color);
@@ -771,7 +778,7 @@ input, textarea, select, button {
   flex-direction: column;
   gap: 6px;
   padding-right: 5px;
-  max-height: 150px;
+  max-height: 100px;
 }
 
 .chat-message {

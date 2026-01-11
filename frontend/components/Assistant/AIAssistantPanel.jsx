@@ -54,16 +54,7 @@ const AIAssistantPanel = ({
 
   // Quick action buttons
   const quickActions = [
-    { label: "Add Node", query: "How do I add a new node to my workflow?" },
-    { label: "Connect Nodes", query: "How do I connect two nodes together?" },
-    {
-      label: "Best Practices",
-      query: "What are the best practices for building workflows?",
-    },
-    {
-      label: "Debug Help",
-      query: "My workflow isn't working. How can I debug it?",
-    },
+
   ];
 
   const sendMessage = async (messageText = null) => {
@@ -93,21 +84,17 @@ const AIAssistantPanel = ({
           workflowId
         );
 
-        if (!projectId || !workflowId) {
-          const missingParams = [];
-          if (!projectId) missingParams.push("project");
-          if (!workflowId) missingParams.push("workflow");
-
-          assistantMessage = {
-            role: "assistant",
-            content: `Agent mode requires both project and workflow to be loaded. Missing: ${missingParams.join(
-              ", "
-            )}.\n\nPlease:\n1. Go to Dashboard\n2. Click on a project\n3. This will load the workflow and enable the agent.`,
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-          setIsLoading(false);
-          return;
-        }
+        // if (!projectId || !workflowId) {
+        //   assistantMessage = {
+        //     role: "assistant",
+        //     content: `Agent mode requires a project to be loaded.
+        //     \n\nPlease:\n1. Go to Dashboard\n2. Click on a project\n3. This will load the project and enable the agent.`,
+        //   };
+        //   setMessages((prev) => [...prev, assistantMessage]);
+        //   setIsLoading(false);
+        //   return;
+        // }
+        // If projectId is present, we proceed to agent mode.
 
         response = await apiClient.post("/ai/agent/chat", {
           message: textToSend,
@@ -195,8 +182,8 @@ const AIAssistantPanel = ({
     >
       <div className="assistant-header">
         <div className="header-left">
-          <h3>AI Assistant</h3>
-          {projectId && workflowId && (
+          <h3>AI Assistant</h3> {/* Changed condition for "Ready" status */}
+          {projectId && (
             <span
               style={{
                 fontSize: "10px",
@@ -207,7 +194,7 @@ const AIAssistantPanel = ({
               ● Ready
             </span>
           )}
-          {(!projectId || !workflowId) && (
+          {!projectId && ( // Changed condition for "Q&A only" status
             <span
               style={{
                 fontSize: "10px",
@@ -221,7 +208,7 @@ const AIAssistantPanel = ({
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <div className="ai-mode-indicator">
-            {currentMode === "qa" ? "💬 Q&A" : "🔧 Agent"}
+            {currentMode === "qa" ? "Q&A" : "Agent"}
           </div>
           <button
             className="collapse-toggle"
@@ -250,24 +237,10 @@ const AIAssistantPanel = ({
       </div>
 
       <div className="messages-container">
-        {messages.length === 0 && (
-          <div className="welcome-message">
-            <p>👋 Hi! I'm your workflow assistant.</p>
-            <p>Ask me anything about:</p>
-            <ul>
-              <li>Adding and connecting nodes</li>
-              <li>API configurations</li>
-              <li>Workflow best practices</li>
-              <li>Troubleshooting issues</li>
-            </ul>
-          </div>
-        )}
 
         {messages.map((msg, i) => (
           <div key={i} className={`message ${msg.role}`}>
-            <div className="message-avatar">
-              {msg.role === "user" ? "👤" : "🤖"}
-            </div>
+            {/* Removed message-avatar div */}
             <div className="message-content">
               <div className="message-text">{msg.content}</div>
               {msg.toolExecutions && msg.toolExecutions.length > 0 && (
@@ -295,7 +268,6 @@ const AIAssistantPanel = ({
 
         {isLoading && (
           <div className="message assistant loading">
-            <div className="message-avatar">🤖</div>
             <div className="message-content">
               <div className="typing-indicator">
                 <span></span>
@@ -327,7 +299,7 @@ const AIAssistantPanel = ({
         </button>
       </div>
 
-      <div className="powered-by">Powered by Moorcheh AI</div>
+      <div className="powered-by">Powered by Google Gemini & Moorcheh AI</div>
     </div>
   );
 };

@@ -18,6 +18,7 @@ const ReactIDE = () => {
     const [jsx, setJsx] = useState('');
     const [css, setCss] = useState('');
     const [activeTab, setActiveTab] = useState('jsx'); // 'jsx' or 'css'
+    const [isCollapsed, setIsCollapsed] = useState(false); // New state for collapse
     const iframeRef = useRef(null);
     const [iframeReady, setIframeReady] = useState(false);
     const monaco = useMonaco();
@@ -212,7 +213,11 @@ const ReactIDE = () => {
     }
 
     return (
-        <div className="react-ide-panel">
+        <div 
+            className={`react-ide-panel ${isCollapsed ? "collapsed" : ""}`}
+            onClick={isCollapsed ? () => setIsCollapsed(false) : undefined}
+            title={isCollapsed ? "Click to expand" : ""}
+        >
             <div className="ide-header">
                 <div className="ide-tabs">
                     <button
@@ -228,7 +233,17 @@ const ReactIDE = () => {
                         CSS
                     </button>
                 </div>
-                <div className="ide-node-name">{reactNode?.data?.name || 'React Node'}</div>
+                <div className="ide-node-name">{reactNode?.data?.name || 'React I/O'}</div>
+                <button
+                    className="collapse-toggle"
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering panel onClick
+                        setIsCollapsed(!isCollapsed);
+                    }}
+                    title={isCollapsed ? "Expand" : "Collapse"}
+                >
+                    {isCollapsed ? "⬅" : "➡"}
+                </button>
             </div>
 
             <div className="ide-editor-container">
