@@ -380,6 +380,33 @@
   }
 }
 
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: 24;
+  }
+}
+
 /* Focus ring utility */
 @layer utilities {
   .focus-ring {
@@ -388,6 +415,14 @@
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.2s ease-out;
   }
 
   .animate-flow-line {

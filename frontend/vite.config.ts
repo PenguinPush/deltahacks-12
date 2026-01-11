@@ -7,14 +7,14 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@hooks': path.resolve(__dirname, './src/hooks'),
-      '@stores': path.resolve(__dirname, './src/stores'),
-      '@services': path.resolve(__dirname, './src/services'),
-      '@types': path.resolve(__dirname, './src/types'),
-      '@utils': path.resolve(__dirname, './src/utils'),
-      '@constants': path.resolve(__dirname, './src/constants'),
+      '@': path.resolve(__dirname, '.'),
+      '@components': path.resolve(__dirname, './components'),
+      '@hooks': path.resolve(__dirname, './hooks'),
+      '@stores': path.resolve(__dirname, './stores'),
+      '@services': path.resolve(__dirname, './services'),
+      '@types': path.resolve(__dirname, './types'),
+      '@utils': path.resolve(__dirname, './utils'),
+      '@constants': path.resolve(__dirname, './constants'),
     },
   },
   server: {
