@@ -2,27 +2,23 @@ from blocks import Block
 
 class ReactBlock(Block):
     """
-    Block that interfaces with the React frontend.
-    Inputs to this block are sent to the frontend.
-    Outputs from this block come from frontend inputs.
+    A special block that can both display data from the graph and provide
+    user-entered data back into the graph.
     """
-    def __init__(self, name: str):
-        super().__init__(name, block_type="REACT")
+    def __init__(self, name: str, x: float = 0.0, y: float = 0.0):
+        super().__init__(name, block_type="REACT", x=x, y=y)
         
-        # Data to send TO React (display variables)
-        self.register_input("display_data")
+        # Input to trigger execution if this block is part of a larger flow
+        self.register_input("trigger", data_type="any", hidden=True)
+        # Data to display IN the React component (when acting as a sink)
+        self.register_input("display_data", data_type="any")
         
-        # Data received FROM React (user inputs)
-        # In a real execution flow, these would be populated before execution starts
-        self.register_output("user_input")
+        # Data from a user TO the graph (when acting as a source)
+        # If unconnected, this is a manual input on the frontend.
+        self.register_input("user_input", data_type="string")
+        self.register_output("value_out", data_type="string")
 
     def execute(self):
-        # In a real backend execution, this block might just pass data through
-        # or act as a terminal node for data collection.
-        
-        # For "display_data", we just hold it so the Flask app can read it later
-        pass
-    
-    def set_user_input(self, value):
-        """Helper to simulate receiving input from frontend before execution."""
-        self.outputs["user_input"] = value
+        # Pass the value from the 'user_input' port to the 'value_out' port.
+        # This allows the block to act as a source for downstream blocks.
+        self.outputs["value_out"] = self.inputs.get("user_input")

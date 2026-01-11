@@ -1,110 +1,161 @@
-from blocks import Block
 import requests
+import json
+from backend.blocks import Block
 from api_schemas import API_SCHEMAS
+from typing import Set
 
 class APIBlock(Block):
     """
-    Block that makes an HTTP request.
-    Can be configured with a specific schema.
+    A block that makes an HTTP request to an API, with dynamically
+    configurable inputs and outputs based on a selected schema.
     """
-    def __init__(self, name: str, schema_key: str = "custom"):
-        super().__init__(name, block_type="API")
-        self.schema_key = schema_key
+    def __init__(self, name: str, schema_key: str = "custom", x: float = 0.0, y: float = 0.0):
+        super().__init__(name, block_type="API", x=x, y=y)
+        
+        # Add a trigger input to ensure execution is always intentional
+        self.register_input("trigger", data_type="any", hidden=True)
+
+        # Core outputs that are always present
+        self.register_output("response_json", data_type="json")
+        self.register_output("status_code", data_type="number")
+        self.register_output("error", data_type="string")
+        self.core_outputs = set(self.outputs.keys())
+
+        # Keep track of which inputs are core vs dynamic
+        self.core_inputs = set(self.inputs.keys()) # Now includes 'trigger'
+
+        self.schema_key = "custom"
+        self.url = ""
+        self.method = "GET"
+        
         self.apply_schema(schema_key)
 
     def apply_schema(self, schema_key: str):
-        """Configures the block based on the selected schema."""
-        if schema_key not in API_SCHEMAS:
-            schema_key = "custom"
-        
-        schema = API_SCHEMAS[schema_key]
+        """Applies a predefined schema, dynamically creating inputs and outputs."""
         self.schema_key = schema_key
+        schema = API_SCHEMAS.get(schema_key, API_SCHEMAS["custom"])
+
         self.url = schema.get("url", "")
         self.method = schema.get("method", "GET")
-        
-        # Clear existing inputs/outputs if re-applying (careful with existing connections)
-        # For simplicity in this hackathon, we assume this is called on init or full reset
-        self.inputs = {}
-        self.input_connectors = {}
-        self.outputs = {}
-        self.output_connectors = {}
-        self.hidden_inputs = set()
-        self.hidden_outputs = set()
 
-        # Register Inputs
-        for key, config in schema.get("inputs", {}).items():
-            self.register_input(key, config.get("default"), hidden=False)
-            
-        # Register Outputs
-        for key, config in schema.get("outputs", {}).items():
-            self.register_output(key, hidden=False)
+        # Clear old dynamic ports
+        self._clear_dynamic_inputs()
+        self._clear_dynamic_outputs()
+
+        schema_inputs = schema.get("inputs", {})
+        if self.schema_key == "custom":
+            # Special handling for the generic custom block
+            for key, meta in schema_inputs.items():
+                self.register_input(key, data_type=meta.get("type", "any"), default_value=meta.get("default"))
+        else:
+            # Handling for structured schemas
+            for input_type in ["path", "params", "body", "headers"]:
+                for key, meta in schema_inputs.get(input_type, {}).items():
+                    self.register_input(key, data_type=meta.get("type", "any"), default_value=meta.get("default"))
+
+        # Register new outputs from the schema
+        for key, meta in schema.get("outputs", {}).items():
+            self.register_output(key, data_type=meta.get("type", "any"))
 
     def execute(self):
-        # Collect inputs
-        # If schema is 'custom', we expect params, headers, body
-        # If schema is specific (e.g. agify), we expect 'name' which maps to a query param
-        
+        """Executes the API call, with validation and error handling."""
+        # Reset all outputs
+        for key in self.outputs:
+            self.outputs[key] = None
+
+        # Check trigger input. If connected and False/None, skip execution.
+        # We check if 'trigger' is in inputs. If it's not connected, it might be None depending on fetch_inputs.
+        # However, usually we want to run if NOT connected, or if connected and True.
+        # But for explicit control flow, if it receives explicit False, it should stop.
+        if self.inputs.get("trigger") is False:
+            self.outputs['error'] = "Skipped: Trigger condition not met."
+            return
+
         schema = API_SCHEMAS.get(self.schema_key, API_SCHEMAS["custom"])
         
-        # Prepare request data
-        req_url = self.url
-        req_params = {}
-        req_body = {}
-        req_headers = {}
+        # --- Determine URL, Params, Body, Headers ---
+        url = self.url
+        params = {}
+        body = {}
+        headers = {}
 
         if self.schema_key == "custom":
-            # Custom block logic: inputs map directly to request parts
-            if "url" in self.inputs:
-                req_url = self.inputs["url"]
-            req_params = self.inputs.get("params", {})
-            req_headers = self.inputs.get("headers", {})
-            req_body = self.inputs.get("body", {})
+            url = self.inputs.get("url", "")
+            params = self.inputs.get("params", {})
+            body = self.inputs.get("body", {})
+            headers = self.inputs.get("headers", {})
         else:
-            # Schema-based logic: inputs map to query params or body based on method
-            # This is a simplification. Real schemas would define where each input goes.
-            # For now, we'll assume GET inputs -> params, POST inputs -> body
-            for key in schema.get("inputs", {}):
-                val = self.inputs.get(key)
-                if val is not None:
-                    if self.method == "GET":
-                        req_params[key] = val
-                    else:
-                        req_body[key] = val
-
-        try:
-            if self.method.upper() == "GET":
-                response = requests.get(req_url, params=req_params, headers=req_headers)
-            elif self.method.upper() == "POST":
-                response = requests.post(req_url, json=req_body, headers=req_headers, params=req_params)
-            else:
-                response = requests.request(self.method, req_url, params=req_params, headers=req_headers, json=req_body)
+            schema_inputs = schema.get("inputs", {})
+            # Format URL with path parameters
+            try:
+                path_params = {key: self.inputs.get(key, "") for key in schema_inputs.get("path", {})}
+                url = self.url.format(**path_params)
+            except KeyError as e:
+                self.outputs['error'] = f"Missing path parameter in URL: {e}"
+                return
             
-            # Map outputs
-            if self.schema_key == "custom":
-                self.outputs["status_code"] = response.status_code
+            # Gather query params and body data
+            params = {key: self.inputs.get(key) for key in schema_inputs.get("params", {}) if self.inputs.get(key) is not None}
+            body = {key: self.inputs.get(key) for key in schema_inputs.get("body", {}) if self.inputs.get(key) is not None}
+            headers = {key: self.inputs.get(key) for key in schema_inputs.get("headers", {}) if self.inputs.get(key) is not None}
+
+        # --- Validation ---
+        if not url or not url.strip():
+            self.outputs['error'] = "API URL is not set."
+            return
+        
+        # --- Execute Request ---
+        try:
+            response = requests.request(
+                method=self.method.upper(),
+                url=url,
+                params=params,
+                json=body if self.method.upper() in ["POST", "PUT", "PATCH"] else None,
+                headers=headers,
+                timeout=10
+            )
+            self.outputs['status_code'] = response.status_code
+            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+
+            response_data = response.json()
+            self.outputs['response_json'] = response_data
+
+            # Map response data to dynamic outputs
+            schema_outputs = schema.get("outputs", {})
+            for key in schema_outputs:
+                if key in response_data:
+                    self.outputs[key] = response_data[key]
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network request failed: {e}"
+            self.outputs['error'] = error_msg
+            if e.response is not None:
+                self.outputs['status_code'] = e.response.status_code
                 try:
-                    self.outputs["response_json"] = response.json()
-                except ValueError:
-                    self.outputs["response_json"] = {"raw": response.text}
-            else:
-                # Map specific schema outputs
-                try:
-                    data = response.json()
-                    for key in schema.get("outputs", {}):
-                        # Simple mapping: output key matches JSON key
-                        if key in data:
-                            self.outputs[key] = data[key]
-                        else:
-                            self.outputs[key] = None # or data itself if root
-                except:
-                    pass # Handle error
-                
-        except Exception as e:
-            # Fallback error handling
-            if "error" in self.outputs:
-                self.outputs["error"] = str(e)
+                    self.outputs['response_json'] = e.response.json()
+                except json.JSONDecodeError:
+                    self.outputs['response_json'] = {"error": "Response is not valid JSON", "content": e.response.text}
 
     def to_dict(self):
-        d = super().to_dict()
-        d["schema_key"] = self.schema_key
-        return d
+        """Adds API-specific properties to the serialized data."""
+        data = super().to_dict()
+        data['schema_key'] = self.schema_key
+        data['url'] = self.url
+        data['method'] = self.method
+        return data
+
+    def _clear_dynamic_inputs(self):
+        """Removes all input ports except for the ones in core_inputs."""
+        keys_to_remove = [k for k in self.inputs.keys() if k not in self.core_inputs]
+        for key in keys_to_remove:
+            if key in self.inputs: del self.inputs[key]
+            if key in self.input_meta: del self.input_meta[key]
+            if key in self.input_connectors: del self.input_connectors[key]
+
+    def _clear_dynamic_outputs(self):
+        """Removes all output ports except for the ones in core_outputs."""
+        keys_to_remove = [k for k in self.outputs.keys() if k not in self.core_outputs]
+        for key in keys_to_remove:
+            if key in self.outputs: del self.outputs[key]
+            if key in self.output_meta: del self.output_meta[key]
+            if key in self.output_connectors: del self.output_connectors[key]

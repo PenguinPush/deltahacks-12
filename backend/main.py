@@ -6,6 +6,7 @@ from block_types.api_block import APIBlock
 from block_types.logic_block import LogicBlock
 from block_types.react_block import ReactBlock
 from block_types.transform_block import TransformBlock
+from block_types.start_block import StartBlock
 from block_types.string_builder_block import StringBuilderBlock
 from api_schemas import API_SCHEMAS
 import collections
@@ -29,76 +30,77 @@ except Exception as e:
 # PART 1: API Block Functionality & Execution Engine
 # ==========================================
 
-def execute_graph(start_blocks: list[Block], method: str = 'bfs'):
+def execute_graph(start_blocks: list[Block], all_blocks_map: dict[str, Block]):
     """
-    Executes the graph.
+    Discovers reachable nodes from start_blocks and executes the resulting subgraph
+    in a sequential, topological order.
     """
-    # 1. Discovery: Find all reachable blocks
-    all_blocks = set()
-    # We can use BFS or DFS here to discover nodes
-    if method == 'dfs':
-        stack = list(start_blocks)
-        while stack:
-            block = stack.pop()
-            if block in all_blocks:
-                continue
-            all_blocks.add(block)
-            for connectors in block.output_connectors.values():
-                for connector in connectors:
-                    stack.append(connector.target_block)
-    else: # bfs
-        queue = collections.deque(start_blocks)
-        while queue:
-            block = queue.popleft()
-            if block in all_blocks:
-                continue
-            all_blocks.add(block)
-            for connectors in block.output_connectors.values():
-                for connector in connectors:
-                    queue.append(connector.target_block)
-    
-    # 2. Build Dependency Graph & Calculate In-Degrees
-    in_degree = {block: 0 for block in all_blocks}
-    graph = {block: [] for block in all_blocks}
-    
-    for block in all_blocks:
+    # 1. Discovery: Find all blocks reachable from the start_blocks using BFS.
+    reachable_blocks = set()
+    queue = collections.deque(start_blocks)
+    while queue:
+        block = queue.popleft()
+        if block in reachable_blocks:
+            continue
+        reachable_blocks.add(block)
+        for connectors in block.output_connectors.values():
+            for connector in connectors:
+                queue.append(connector.target_block)
+
+    # 2. Build Dependency Graph for the REACHABLE subgraph
+    block_map = {b.id: b for b in reachable_blocks}
+    in_degree = {b.id: 0 for b in reachable_blocks}
+    # The graph stores dependencies: graph[u] = [v, w] means u -> v and u -> w
+    graph = {b.id: [] for b in reachable_blocks}
+
+    for block in reachable_blocks:
         for connectors in block.output_connectors.values():
             for connector in connectors:
                 target = connector.target_block
-                if target in all_blocks:
-                    graph[block].append(target)
-                    in_degree[target] += 1
+                # Only create edges between nodes that are in our reachable set
+                if target.id in block_map:
+                    graph[block.id].append(target.id)
+                    in_degree[target.id] += 1
 
-    # 3. Execution (Topological Sort)
-    # Nodes with 0 in-degree are ready to execute
-    ready_queue = collections.deque([b for b in all_blocks if in_degree[b] == 0])
+    # 3. Execution (Topological Sort on the subgraph)
+    ready_queue = collections.deque([b_id for b_id, degree in in_degree.items() if degree == 0])
     
     results = {}
     execution_order = []
 
     while ready_queue:
-        current_block = ready_queue.popleft()
-        execution_order.append(current_block.name)
+        current_block_id = ready_queue.popleft()
+        current_block = block_map[current_block_id]
+        execution_order.append(current_block.id)
         
         # Fetch inputs from upstream blocks
         current_block.fetch_inputs()
         
         # Execute the block
-        print(f"Executing {current_block.name}...")
-        current_block.execute()
-        
-        # Store results
-        results[current_block.id] = {
-            "name": current_block.name,
-            "type": current_block.block_type,
-            "outputs": current_block.outputs
-        }
+        try:
+            print(f"Executing {current_block.name}...")
+            current_block.execute()
+            print(f"Result ({current_block.name}): {current_block.outputs}")
+            # Store results after successful execution
+            results[current_block.id] = {
+                "name": current_block.name,
+                "type": current_block.block_type,
+                "outputs": current_block.outputs
+            }
+        except Exception as e:
+            print(f"!!! Execution of block '{current_block.name}' failed: {e}")
+            # Store error information in the results
+            results[current_block.id] = {
+                "name": current_block.name,
+                "type": current_block.block_type,
+                "outputs": {"error": f"Execution failed: {e}"}
+            }
 
         # Propagate to neighbors
-        for neighbor in graph[current_block]:
-            in_degree[neighbor] -= 1
-            if in_degree[neighbor] == 0:
-                ready_queue.append(neighbor)
+        for neighbor_id in graph[current_block_id]:
+            in_degree[neighbor_id] -= 1
+            if in_degree[neighbor_id] == 0:
+                ready_queue.append(neighbor_id)
                 
     return {
         "execution_order": execution_order,
@@ -162,35 +164,23 @@ def run_graph():
     if not current_project.blocks:
         return jsonify({"error": "No graph defined"}), 400
 
-    method = request.args.get('method', 'bfs')
-    
-    # Identify start nodes (nodes with no input connectors active)
-    # For simplicity, we can just pass all blocks and let the engine sort it out,
-    # but passing known start nodes is more efficient.
-    # Here we just pass all blocks in the project as potential start points for discovery.
-    start_blocks = list(current_project.blocks.values())
-    
+    # Find all StartBlock instances to use as entry points for execution.
+    start_nodes = [
+        block for block in current_project.blocks.values()
+        if isinstance(block, StartBlock)
+    ]
+
+    if not start_nodes:
+        return jsonify({"error": "Execution failed: No 'Start' block found in the project. Add a Start block to define an entry point."}), 400
+
     try:
-        results = execute_graph(start_blocks, method=method)
+        # Pass the start nodes and the full map of all blocks in the project
+        results = execute_graph(start_nodes, current_project.blocks)
         return jsonify(results)
     except Exception as e:
+        # Log the full exception for easier debugging on the server
+        print(f"Error during graph execution: {e}")
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/update_input', methods=['POST'])
-def update_react_input():
-    """
-    Endpoint for React frontend to send user input values.
-    """
-    data = request.json
-    block_id = data.get("block_id")
-    value = data.get("value")
-    
-    block = current_project.blocks.get(block_id)
-    if block and isinstance(block, ReactBlock):
-        block.set_user_input(value)
-        return jsonify({"status": "updated", "block_id": block_id})
-    else:
-        return jsonify({"error": "Block not found"}), 404
 
 @app.route('/api/block/toggle_visibility', methods=['POST'])
 def toggle_visibility():
@@ -233,7 +223,7 @@ def add_block():
         if block_type == "API":
             # Default to custom if not specified
             schema_key = data.get("schema_key", "custom")
-            new_block = APIBlock(name, schema_key)
+            new_block = APIBlock(name, schema_key, x=x, y=y)
             # If custom, allow overriding url/method
             if schema_key == "custom":
                 if "url" in data: new_block.url = data["url"]
@@ -241,20 +231,21 @@ def add_block():
                 
         elif block_type == "LOGIC":
             operation = data.get("operation", "add")
-            new_block = LogicBlock(name, operation)
+            new_block = LogicBlock(name, operation, x=x, y=y)
         elif block_type == "REACT":
-            new_block = ReactBlock(name)
+            new_block = ReactBlock(name, x=x, y=y)
         elif block_type == "TRANSFORM":
             t_type = data.get("transformation_type", "to_string")
-            new_block = TransformBlock(name, t_type)
+            fields = data.get("fields", "")
+            new_block = TransformBlock(name, t_type, fields=fields, x=x, y=y)
         elif block_type == "STRING_BUILDER":
             template = data.get("template", "")
-            new_block = StringBuilderBlock(name, template)
+            new_block = StringBuilderBlock(name, template, x=x, y=y)
+        elif block_type == "START":
+            new_block = StartBlock(name, x=x, y=y)
         else:
             return jsonify({"error": f"Unknown block type: {block_type}"}), 400
             
-        new_block.x = x
-        new_block.y = y
         current_project.add_block(new_block)
         
         return jsonify({
@@ -314,10 +305,34 @@ def update_block():
     elif isinstance(block, TransformBlock):
         if "transformation_type" in data:
             block.transformation_type = data["transformation_type"]
+        if "fields" in data:
+            block.fields = data["fields"]
     elif isinstance(block, StringBuilderBlock):
         if "template" in data:
             block.template = data["template"]
             
+    return jsonify({"status": "updated", "block": block.to_dict()})
+
+@app.route('/api/block/update_input_value', methods=['POST'])
+def update_block_input_value():
+    """
+    Endpoint for the frontend to set the value of an unconnected input.
+    """
+    data = request.json
+    block_id = data.get("block_id")
+    input_key = data.get("input_key")
+    value = data.get("value")
+    
+    block = current_project.blocks.get(block_id)
+    if not block:
+        return jsonify({"error": "Block not found"}), 404
+        
+    if input_key not in block.inputs:
+        return jsonify({"error": f"Input '{input_key}' not found on block"}), 404
+    
+    # In a real app, you might add type validation here based on block.input_meta
+    block.inputs[input_key] = value
+    
     return jsonify({"status": "updated", "block": block.to_dict()})
 
 @app.route('/api/connection/add', methods=['POST'])
@@ -391,30 +406,21 @@ def get_graph_structure():
     edges = []
     
     for block in current_project.blocks.values():
-        # Prepare extra data for frontend rendering
-        extra_data = {}
-        if isinstance(block, APIBlock):
-            extra_data["schema_key"] = block.schema_key
-            extra_data["url"] = block.url
-            extra_data["method"] = block.method
-        
-        nodes.append({
-            "id": block.id,
-            "name": block.name,
-            "type": block.block_type,
-            "x": block.x,
-            "y": block.y,
-            "inputs": list(block.inputs.keys()),
-            "outputs": list(block.outputs.keys()),
-            "hidden_inputs": list(block.hidden_inputs),
-            "hidden_outputs": list(block.hidden_outputs),
-            "menu_open": block.menu_open,
-            "extra": extra_data
-        })
+        # Use the block's own to_dict() method for serialization.
+        # This is more robust and respects subclass-specific data.
+        node_data = block.to_dict()
+
+        # The frontend expects 'type', but to_dict() provides 'block_type'.
+        # Let's align them for consistency.
+        node_data['type'] = node_data.pop('block_type')
+
+        nodes.append(node_data)
         
         for output_key, connectors in block.output_connectors.items():
             for connector in connectors:
+                edge_id = f"edge-{block.id}-{output_key}-{connector.target_block.id}-{connector.target_input_key}"
                 edges.append({
+                    "id": edge_id,
                     "source": block.id,
                     "sourceHandle": output_key,
                     "target": connector.target_block.id,
@@ -678,41 +684,9 @@ def delete_workflow_endpoint(workflow_id):
 # --- Demo Setup ---
 def setup_demo_project():
     """
-    Sets up a sample project.
+    Sets up a sample project demonstrating a clear API flow.
     """
-    proj = Project("Demo Project")
-    
-    input_block = ReactBlock("User Name Input")
-    input_block.set_user_input("World")
-    input_block.x = 100
-    input_block.y = 100
-    
-    logic_block = LogicBlock("Greeter", "add")
-    logic_block.inputs["val_a"] = "Hello " 
-    logic_block.x = 300
-    logic_block.y = 100
-    
-    api_block = APIBlock("Echo API", "custom")
-    api_block.url = "https://postman-echo.com/get"
-    api_block.x = 500
-    api_block.y = 100
-    
-    display_block = ReactBlock("Result Display")
-    display_block.x = 700
-    display_block.y = 100
-
-    proj.add_block(input_block)
-    proj.add_block(logic_block)
-    proj.add_block(api_block)
-    proj.add_block(display_block)
-
-    input_block.connect("user_input", logic_block, "val_b")
-    
-    def to_params(data):
-        return {"message": data}
-    
-    logic_block.connect("result", api_block, "params", modifier=to_params)
-    api_block.connect("response_json", display_block, "display_data")
+    proj = Project("API Demo Project")
     
     return proj
 

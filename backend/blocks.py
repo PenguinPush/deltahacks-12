@@ -32,8 +32,13 @@ class Block(ABC):
         self.y = y
         
         # Stores the actual data values
-        self.inputs: Dict[str, Any] = {} 
+        self.inputs: Dict[str, Any] = {}
         self.outputs: Dict[str, Any] = {}
+        
+        # Stores metadata about inputs/outputs like data type
+        # e.g., {"my_input": {"data_type": "string"}}
+        self.input_meta: Dict[str, Dict[str, Any]] = {}
+        self.output_meta: Dict[str, Dict[str, Any]] = {}
         
         # Stores the connections
         # input_key -> Connector (one source per input)
@@ -50,17 +55,19 @@ class Block(ABC):
         # This is mostly for frontend state, but good to track if we persist state.
         self.menu_open: bool = False
 
-    def register_input(self, key: str, default_value: Any = None, hidden: bool = False):
+    def register_input(self, key: str, data_type: str = "any", default_value: Any = None, hidden: bool = False):
         """Defines an input slot for this block."""
         self.inputs[key] = default_value
+        self.input_meta[key] = {"data_type": data_type}
         self.input_connectors[key] = None
         if hidden:
             self.hidden_inputs.add(key)
 
-    def register_output(self, key: str, hidden: bool = False):
+    def register_output(self, key: str, data_type: str = "any", hidden: bool = False):
         """Defines an output slot for this block."""
         self.outputs[key] = None
         self.output_connectors[key] = []
+        self.output_meta[key] = {"data_type": data_type}
         if hidden:
             self.hidden_outputs.add(key)
 
@@ -87,6 +94,14 @@ class Block(ABC):
         if input_key not in target_block.inputs:
             raise ValueError(f"Input '{input_key}' not found in target block '{target_block.name}'")
         
+        # Ensure the input only has one connection: remove existing if present
+        existing_connector = target_block.input_connectors.get(input_key)
+        if existing_connector:
+            # Remove this connector from the previous source block's outputs
+            prev_source = existing_connector.source_block
+            if existing_connector in prev_source.output_connectors[existing_connector.source_output_key]:
+                prev_source.output_connectors[existing_connector.source_output_key].remove(existing_connector)
+
         connector = Connector(self, output_key, target_block, input_key, modifier)
         self.output_connectors[output_key].append(connector)
         target_block.input_connectors[input_key] = connector
@@ -122,7 +137,22 @@ class Block(ABC):
             "block_type": self.block_type,
             "x": self.x,
             "y": self.y,
-            "inputs": self.inputs, 
+            "inputs": [
+                {
+                    "key": key,
+                    "value": self.inputs.get(key),
+                    **self.input_meta.get(key, {})
+                }
+                for key in self.inputs.keys()
+            ],
+            "outputs": [
+                {
+                    "key": key,
+                    "value": self.outputs.get(key),
+                    **self.output_meta.get(key, {})
+                }
+                for key in self.outputs.keys()
+            ],
             "hidden_inputs": list(self.hidden_inputs),
             "hidden_outputs": list(self.hidden_outputs),
             "menu_open": self.menu_open

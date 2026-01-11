@@ -7,6 +7,7 @@ from block_types.api_block import APIBlock
 from block_types.logic_block import LogicBlock
 from block_types.react_block import ReactBlock
 from block_types.transform_block import TransformBlock
+from block_types.start_block import StartBlock
 from block_types.string_builder_block import StringBuilderBlock
 
 class Project:
@@ -63,6 +64,7 @@ class Project:
                 block_data["operation"] = block.operation
             elif isinstance(block, TransformBlock):
                 block_data["transformation_type"] = block.transformation_type
+                block_data["fields"] = block.fields
             elif isinstance(block, StringBuilderBlock):
                 block_data["template"] = block.template
             
@@ -95,31 +97,33 @@ class Project:
         for block_data in data["blocks"]:
             b_type = block_data["block_type"]
             name = block_data["name"]
+            x = block_data.get("x", 0.0)
+            y = block_data.get("y", 0.0)
             
             block = None
             if b_type == "API":
                 # Pass schema_key if present, otherwise default to custom
                 schema_key = block_data.get("schema_key", "custom")
-                block = APIBlock(name, schema_key)
+                block = APIBlock(name, schema_key, x=x, y=y)
                 # If it was custom, we might need to restore url/method manually if they differ from schema default
                 if schema_key == "custom":
                     block.url = block_data.get("url", "")
                     block.method = block_data.get("method", "GET")
 
             elif b_type == "LOGIC":
-                block = LogicBlock(name, block_data.get("operation", "add"))
+                block = LogicBlock(name, block_data.get("operation", "add"), x=x, y=y)
             elif b_type == "REACT":
-                block = ReactBlock(name)
+                block = ReactBlock(name, x=x, y=y)
             elif b_type == "TRANSFORM":
-                block = TransformBlock(name, block_data.get("transformation_type", "to_string"))
+                block = TransformBlock(name, block_data.get("transformation_type", "to_string"), fields=block_data.get("fields", ""), x=x, y=y)
             elif b_type == "STRING_BUILDER":
-                block = StringBuilderBlock(name, block_data.get("template", ""))
+                block = StringBuilderBlock(name, block_data.get("template", ""), x=x, y=y)
+            elif b_type == "START":
+                block = StartBlock(name, x=x, y=y)
             
             if block:
                 # Restore base properties
                 block.id = block_data["id"] # Preserve ID for connection mapping
-                block.x = block_data.get("x", 0.0)
-                block.y = block_data.get("y", 0.0)
                 block.menu_open = block_data.get("menu_open", False)
                 
                 # Restore visibility state
@@ -130,9 +134,11 @@ class Project:
                 
                 # Restore inputs (static values)
                 if "inputs" in block_data:
-                    for k, v in block_data["inputs"].items():
-                        if k in block.inputs:
-                            block.inputs[k] = v
+                    for input_data in block_data["inputs"]:
+                        key = input_data.get("key")
+                        value = input_data.get("value")
+                        if key and key in block.inputs:
+                            block.inputs[key] = value
                 
                 project.add_block(block)
                 id_map[block.id] = block
