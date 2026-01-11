@@ -77,17 +77,21 @@ const AIAssistantPanel = ({ currentNodes, selectedNode }) => {
 
   return (
     <div className={`ai-assistant-panel ${isExpanded ? 'expanded' : 'collapsed'}`}>
-      <div className="assistant-header">
+      <div
+        className="assistant-header"
+        onClick={() => !isExpanded && setIsExpanded(true)}
+        title={!isExpanded ? "Click to expand" : ""}
+      >
         <div className="header-left">
           <span className="assistant-icon">🤖</span>
           <h3>AI Assistant</h3>
         </div>
         <button
           className="toggle-btn"
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
           title={isExpanded ? 'Collapse' : 'Expand'}
         >
-          {isExpanded ? '→' : '←'}
+          {isExpanded ? '↘' : '↖'}
         </button>
       </div>
 
