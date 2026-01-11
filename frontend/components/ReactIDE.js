@@ -1,15 +1,19 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
-import Editor, { useMonaco } from '@monaco-editor/react';
+import Editor, {useMonaco} from '@monaco-editor/react';
 import {useStore} from '../helpers/store';
 
 const ReactIDE = () => {
     const nodes = useStore((state) => state.nodes);
-    const selectedNodeId = useStore((state) => state.selectedNodeId);
     const updateNode = useStore((state) => state.updateNode);
     const editorTheme = useStore((state) => state.editorTheme);
     const updateOutputValue = useStore((state) => state.updateOutputValue);
     const executeGraph = useStore((state) => state.executeGraph);
     const edges = useStore((state) => state.edges);
+    // Auto-seek the React node directly, ignoring selection.
+    const reactNode = useStore(state =>
+        (state.nodes || []).find(n => n.data?.type === 'REACT' || n.data?.block_type === 'REACT')
+    );
+    const reactNodeId = reactNode?.id;
 
     const [jsx, setJsx] = useState('');
     const [css, setCss] = useState('');
@@ -25,19 +29,16 @@ const ReactIDE = () => {
         }
     }, [monaco, editorTheme]);
 
-    const selectedNode = nodes.find(n => n.id === selectedNodeId);
-    const isReactNode = selectedNode?.type === 'REACT';
-
     // Compute props for the React preview by resolving connections. If an input is connected,
     // use the source node's output value; otherwise fall back to the input.value stored on the node.
     const previewProps = React.useMemo(() => {
-        if (!isReactNode || !selectedNode) return {};
+        if (!reactNode) return {};
 
         const props = {};
 
-        (selectedNode.data.inputs || []).forEach(input => {
+        (reactNode.data.inputs || []).forEach(input => {
             // Find an edge that connects into this input
-            const incoming = edges.find(e => e.target === selectedNode.id && e.targetHandle === input.key);
+            const incoming = edges.find(e => e.target === reactNode.id && e.targetHandle === input.key);
             if (incoming) {
                 // find source node
                 const src = nodes.find(n => n.id === incoming.source);
@@ -53,17 +54,17 @@ const ReactIDE = () => {
         });
 
         return props;
-    }, [nodes, edges, selectedNodeId, isReactNode, selectedNode]);
+    }, [nodes, edges, reactNode]);
 
     useEffect(() => {
-        if (isReactNode && selectedNode) {
-            setJsx(selectedNode.data.jsx_code || '');
-            setCss(selectedNode.data.css_code || '');
+        if (reactNode) {
+            setJsx(reactNode.data.jsx_code || '');
+            setCss(reactNode.data.css_code || '');
         } else {
             setJsx('');
             setCss('');
         }
-    }, [selectedNodeId, isReactNode]); // Only re-sync when switching nodes to prevent typing loops
+    }, [reactNode]); // Only re-sync when the react node itself changes
 
     // Listen for sandbox ready messages so we don't post before iframe is initialized
     useEffect(() => {
@@ -80,22 +81,30 @@ const ReactIDE = () => {
     // Handle local changes before syncing to store (debounce could be added here)
     const handleJsxChange = (value) => {
         setJsx(value);
-        if (selectedNodeId) {
-            updateNode(selectedNodeId, {jsx_code: value});
+        if (reactNodeId) {
+            updateNode(reactNodeId, {jsx_code: value});
         }
     };
 
     const handleCssChange = (value) => {
         setCss(value);
-        if (selectedNodeId) {
-            updateNode(selectedNodeId, {css_code: value});
+        if (reactNodeId) {
+            updateNode(reactNodeId, {css_code: value});
         }
     };
 
     // --- PARSING LOGIC ---
     // Parse the JSX code to find props and update the node's inputs/outputs
-    const parseAndSyncPorts = useCallback((code) => {
-        if (!selectedNodeId || !isReactNode) return;
+    const parseAndSyncPorts = useCallback((code) => { // This function is now stable
+        // Get the latest state directly from the store to avoid stale closures
+        // and to prevent this callback from being recreated on every render.
+        const state = useStore.getState();
+        const selectedNode = state.nodes.find(n => n.data?.type === 'REACT' || n.data?.block_type === 'REACT');
+
+        // Guard clauses using the fresh data
+        if (!selectedNode) {
+            return;
+        }
 
         // Regex to find the props destructuring pattern in:
         // 1. export default function Name({ prop1, prop2 }) ...
@@ -106,11 +115,14 @@ const ReactIDE = () => {
         const match = code.match(functionRegex) || code.match(arrowRegex);
 
         if (match && match[1]) {
-            // Extract prop names
-            const props = match[1]
+            // First, remove all comments (line and block) from the captured group
+            const propsString = match[1].replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+            
+            // Extract prop names from the cleaned string
+            const props = propsString
                 .split(',')
                 .map(p => p.trim().split('=')[0].split(':')[0].trim()) // Handle defaults (=) and renaming (:)
-                .filter(p => p && !p.startsWith('//') && !p.startsWith('/*'));
+                .filter(p => p); // Filter out any empty strings that might result from trailing commas
 
             const newInputs = [];
             const newOutputs = [];
@@ -120,24 +132,24 @@ const ReactIDE = () => {
 
                 // Convention: Props starting with 'on' followed by uppercase are Outputs (Events)
                 if (prop.startsWith('on') && prop.length > 2 && prop[2] === prop[2].toUpperCase()) {
-                    newOutputs.push({ key: prop, data_type: 'any' });
+                    newOutputs.push({key: prop, data_type: 'any'});
                 } else {
-                    newInputs.push({ key: prop, data_type: 'any' });
+                    newInputs.push({key: prop, data_type: 'any'});
                 }
             });
 
             // Compare with current ports to avoid unnecessary updates
-            const currentInputs = selectedNode?.data?.inputs || [];
-            const currentOutputs = selectedNode?.data?.outputs || [];
+            const currentInputs = selectedNode.data?.inputs || [];
+            const currentOutputs = selectedNode.data?.outputs || [];
 
-            const inputsChanged = JSON.stringify(newInputs.map(i=>i.key).sort()) !== JSON.stringify(currentInputs.map(i=>i.key).sort());
-            const outputsChanged = JSON.stringify(newOutputs.map(o=>o.key).sort()) !== JSON.stringify(currentOutputs.map(o=>o.key).sort());
+            const inputsChanged = JSON.stringify(newInputs.map(i => i.key).sort()) !== JSON.stringify(currentInputs.map(i => i.key).sort());
+            const outputsChanged = JSON.stringify(newOutputs.map(o => o.key).sort()) !== JSON.stringify(currentOutputs.map(o => o.key).sort());
 
             if (inputsChanged || outputsChanged) {
-                updateNode(selectedNodeId, { inputs: newInputs, outputs: newOutputs });
+                updateNode(selectedNode.id, {inputs: newInputs, outputs: newOutputs});
             }
         }
-    }, [selectedNodeId, isReactNode, selectedNode, updateNode]);
+    }, [updateNode]);
 
     // Debounce the parsing so it doesn't run on every keystroke
     useEffect(() => {
@@ -150,7 +162,7 @@ const ReactIDE = () => {
     // --- PREVIEW / SANDBOX LOGIC ---
     // Send code and props to the sandbox iframe
     useEffect(() => {
-        if (!isReactNode || !iframeRef.current) return;
+        if (!reactNode || !iframeRef.current) return;
         // Wait until iframe signals it's ready
         if (!iframeReady) return;
 
@@ -170,16 +182,16 @@ const ReactIDE = () => {
             // ignore postMessage errors from cross-origin or timing
             console.warn('Failed to postMessage to sandbox:', e);
         }
-    }, [jsx, css, previewProps, iframeReady, isReactNode, selectedNode]);
+    }, [jsx, css, previewProps, iframeReady, reactNode]);
 
     // Listen for messages from sandbox (updates to outputs, execution triggers)
     useEffect(() => {
         const handleMessage = (event) => {
-            if (!selectedNodeId) return;
+            if (!reactNodeId) return;
 
             const {type, payload} = event.data;
             if (type === 'SET_WORKFLOW_OUTPUT') {
-                updateOutputValue(selectedNodeId, payload.key, payload.value);
+                updateOutputValue(reactNodeId, payload.key, payload.value);
             } else if (type === 'TRIGGER_WORKFLOW_EXECUTION') {
                 executeGraph();
             }
@@ -187,13 +199,14 @@ const ReactIDE = () => {
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [selectedNodeId, executeGraph, updateOutputValue]);
+    }, [reactNodeId, executeGraph, updateOutputValue]);
 
 
-    if (!isReactNode) {
+    if (!reactNode) {
         return (
-            <div className="react-ide-empty">
-                <p>Select a React Node to edit its code.</p>
+            <div className="react-ide-panel react-ide-empty">
+                <p>No React I/O node found in the workflow.</p>
+                <p>Add a <strong>React I/O</strong> block from the Logic Blocks panel to activate the editor.</p>
             </div>
         );
     }
@@ -215,7 +228,7 @@ const ReactIDE = () => {
                         CSS
                     </button>
                 </div>
-                <div className="ide-node-name">{selectedNode?.data?.name || 'React Node'}</div>
+                <div className="ide-node-name">{reactNode?.data?.name || 'React Node'}</div>
             </div>
 
             <div className="ide-editor-container">

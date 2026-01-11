@@ -7,7 +7,7 @@ from bson import ObjectId
 # Import all block types to allow dynamic instantiation
 from block_types.api_block import APIBlock
 from block_types.logic_block import LogicBlock
-from block_types.react_block import ReactBlock
+from block_types.react_block import ReactBlock, DEFAULT_JSX, DEFAULT_CSS
 from block_types.transform_block import TransformBlock
 from block_types.start_block import StartBlock
 from block_types.string_builder_block import StringBuilderBlock
@@ -152,20 +152,27 @@ class Project:
                 block.id = block_data["id"] # Preserve ID for connection mapping
                 block.menu_open = block_data.get("menu_open", False)
                 
-                # Restore visibility state
-                if "hidden_inputs" in block_data:
-                    block.hidden_inputs = set(block_data["hidden_inputs"])
-                if "hidden_outputs" in block_data:
-                    block.hidden_outputs = set(block_data["hidden_outputs"])
-                
-                # Restore inputs (static values)
+                # --- NEW PORT RESTORATION LOGIC ---
+                # Re-register all ports from the saved data. This makes the saved file
+                # the single source of truth for a block's structure.
                 if "inputs" in block_data:
-                    for input_data in block_data["inputs"]:
-                        key = input_data.get("key")
-                        value = input_data.get("value")
-                        if key and key in block.inputs:
-                            block.inputs[key] = value
+                    for port_data in block_data["inputs"]:
+                        block.register_input(
+                            port_data['key'],
+                            data_type=port_data.get('data_type', 'any'),
+                            default_value=port_data.get('value')
+                        )
+                if "outputs" in block_data:
+                    for port_data in block_data["outputs"]:
+                        block.register_output(
+                            port_data['key'],
+                            data_type=port_data.get('data_type', 'any')
+                        )
                 
+                # Restore visibility state after ports are registered
+                block.hidden_inputs = set(block_data.get("hidden_inputs", []))
+                block.hidden_outputs = set(block_data.get("hidden_outputs", []))
+
                 project.add_block(block)
                 id_map[block.id] = block
 
@@ -274,8 +281,8 @@ class Project:
             operation = kwargs.get("operation", "add")
             new_block = LogicBlock(name, operation, x=x, y=y)
         elif block_type == "REACT":
-            jsx_code = kwargs.get("jsx_code", "export default function MyComponent({ data_in, onWorkflowOutputChange }) {\n  return <div>Input: {JSON.stringify(data_in)}</div>;\n}")
-            css_code = kwargs.get("css_code", "/* CSS for your component */\ndiv {\n  padding: 10px;\n  border-radius: 5px;\n  background-color: #f0f0f0;\n}")
+            jsx_code = kwargs.get("jsx_code", DEFAULT_JSX)
+            css_code = kwargs.get("css_code", DEFAULT_CSS)
             new_block = ReactBlock(name, jsx_code=jsx_code, css_code=css_code, x=x, y=y)
         elif block_type == "TRANSFORM":
             t_type = kwargs.get("transformation_type", "to_string")

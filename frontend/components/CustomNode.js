@@ -2,6 +2,7 @@ import React, { memo, useState, useMemo, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 import { useStore } from '../helpers/store';
 import Image from 'next/image';
+import ReactIDE from './ReactIDE';
 
 // NOTE: avoid returning a fresh object from a selector (causes snapshot caching warnings)
 // Use individual `useStore` selectors below in the component to prevent re-renders/infinite loops.

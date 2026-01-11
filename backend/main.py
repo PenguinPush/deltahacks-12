@@ -4,7 +4,7 @@ from blocks import Block
 from project import Project
 from block_types.api_block import APIBlock
 from block_types.logic_block import LogicBlock
-from block_types.react_block import ReactBlock
+from block_types.react_block import ReactBlock, DEFAULT_JSX, DEFAULT_CSS
 from block_types.transform_block import TransformBlock
 from block_types.start_block import StartBlock
 from block_types.string_builder_block import StringBuilderBlock
@@ -225,8 +225,8 @@ def add_block():
             operation = data.get("operation", "add")
             new_block = LogicBlock(name, operation, x=x, y=y)
         elif block_type == "REACT":
-            jsx_code = data.get("jsx_code", "export default function MyComponent({ data_in, onWorkflowOutputChange }) {\n  return <div>Input: {JSON.stringify(data_in)}</div>;\n}")
-            css_code = data.get("css_code", "/* CSS for your component */\ndiv {\n  padding: 10px;\n  border-radius: 5px;\n  background-color: #f0f0f0;\n}")
+            jsx_code = data.get("jsx_code", DEFAULT_JSX)
+            css_code = data.get("css_code", DEFAULT_CSS)
             new_block = ReactBlock(name, jsx_code=jsx_code, css_code=css_code, x=x, y=y)
         elif block_type == "TRANSFORM":
             t_type = data.get("transformation_type", "to_string")

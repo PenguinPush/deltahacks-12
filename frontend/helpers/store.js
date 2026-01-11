@@ -38,7 +38,7 @@ export const useStore = create((set, get) => ({
     currentProjectId: null,
     currentWorkflowId: null,
     autoSaveTimer: null,
-    
+
     // --- THEME & EDITOR ---
     editorTheme: {
         base: 'vs-dark',
@@ -74,7 +74,7 @@ export const useStore = create((set, get) => ({
 
             const flowNodes = nodes.map(createFlowNode);
             set({nodes: flowNodes, edges});
-            
+
             // Auto-select React node if present
             const reactNode = flowNodes.find(n => n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'));
             if (reactNode) {
@@ -143,7 +143,7 @@ export const useStore = create((set, get) => ({
     onConnect: async (connection) => {
         const tempEdgeId = `edge-${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`;
         const optimisticEdge = {...connection, id: tempEdgeId, type: 'straight'};
-        
+
         set(state => {
             // Ensure inputs only have one connection by removing any existing edge to the target handle
             const filteredEdges = state.edges.filter(e => !(e.target === connection.target && e.targetHandle === connection.targetHandle));
@@ -416,7 +416,7 @@ export const useStore = create((set, get) => ({
 
     onSelectionChange: ({ nodes: selectedNodes }) => {
         const selectedIds = (selectedNodes || []).map(n => n.id);
-        
+
         // Editor Logic: Always point to React Node if it exists
         const reactNode = get().nodes.find(n => n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'));
         let editorTargetId = null;
@@ -425,7 +425,7 @@ export const useStore = create((set, get) => ({
         } else {
             editorTargetId = selectedIds.length === 1 ? selectedIds[0] : null;
         }
-        
+
         const activeId = selectedIds.length === 1 ? selectedIds[0] : null;
 
         // Update node.selected flags so other parts of the UI (and ReactFlow) stay consistent
@@ -436,7 +436,7 @@ export const useStore = create((set, get) => ({
                 return { ...n, selected: shouldBeSelected };
             }),
             selectedNodeIds: selectedIds,
-            activeBlockId: state.isExecuting ? state.activeBlockId : activeId, 
+            activeBlockId: state.isExecuting ? state.activeBlockId : activeId,
             selectedNodeId: editorTargetId // Sync selectedNodeId for ReactIDE (forced to React Node if present)
         }));
     },
@@ -539,10 +539,10 @@ export const useStore = create((set, get) => ({
                                 if (typeof messageContent === 'object' && messageContent !== null) {
                                     messageContent = JSON.stringify(messageContent, null, 2);
                                 }
-                                
+
                                 // This is a blocking call on the main thread.
                                 const userInput = window.prompt(`${messageContent || ''}`, "") || "";
-                                
+
                                 // Update the local UI immediately for a responsive feel
                                 get().updateOutputValue(event.block_id, 'response', userInput);
 
@@ -695,7 +695,7 @@ export const useStore = create((set, get) => ({
             });
 
             console.log('✅ Workflow loaded successfully:', { nodes: flowNodes.length, edges: flowEdges.length });
-            
+
             // Auto-select React node if present
             const reactNode = flowNodes.find(n => n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'));
             if (reactNode) {
