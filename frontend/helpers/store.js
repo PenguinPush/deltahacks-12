@@ -289,10 +289,12 @@ export const useStore = create((set, get) => ({
                 buffer = lines.pop(); // Keep incomplete line
 
                 for (const line of lines) {
-                    if (!line.trim()) continue;
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) continue;
+
                     try {
-                        const event = JSON.parse(line);
-                        
+                        const event = JSON.parse(trimmedLine);
+
                         if (event.type === 'start') {
                             set(state => {
                                 const targetId = state.hoveredNodeId || event.block_id;
@@ -357,7 +359,10 @@ export const useStore = create((set, get) => ({
                             });
                         }
                     } catch (e) {
-                        console.error("Error parsing stream line:", e);
+                        // Skip invalid JSON lines (common in streaming responses)
+                        if (trimmedLine.length > 0) {
+                            console.warn("Skipping invalid JSON line:", trimmedLine.substring(0, 100));
+                        }
                     }
                 }
             }
