@@ -219,12 +219,25 @@ export function Dashboard() {
               <button
                 key={project.id}
                 onClick={async () => {
-                  // Fetch workflows for this project
-                  const workflows = await workflowService.getAllWorkflows(project.id);
-                  if (workflows.length > 0) {
+                  try {
+                    // Fetch workflows for this project
+                    let workflows = await workflowService.getAllWorkflows(project.id);
+
+                    // If no workflows exist, create one
+                    if (workflows.length === 0) {
+                      console.log('No workflows found, creating default workflow...');
+                      const newWorkflow = await workflowService.createWorkflow(project.id, {
+                        name: 'Main Workflow',
+                        data: { nodes: [], edges: [] }
+                      });
+                      workflows = [newWorkflow];
+                    }
+
+                    // Navigate with both project and workflow IDs
                     router.push(`/workflow?project=${project.id}&workflow=${workflows[0].workflow_id}`);
-                  } else {
-                    router.push(`/workflow?project=${project.id}`);
+                  } catch (error) {
+                    console.error('Error loading project:', error);
+                    alert('Failed to load project. Please try again.');
                   }
                 }}
                 className="dashboard-project-item"
@@ -282,11 +295,23 @@ export function Dashboard() {
               icon={Database}
               headerColorClass="node-header-react"
               onClick={async () => {
-                const workflows = await workflowService.getAllWorkflows(projects[0].id);
-                if (workflows.length > 0) {
+                try {
+                  let workflows = await workflowService.getAllWorkflows(projects[0].id);
+
+                  // If no workflows exist, create one
+                  if (workflows.length === 0) {
+                    console.log('No workflows found, creating default workflow...');
+                    const newWorkflow = await workflowService.createWorkflow(projects[0].id, {
+                      name: 'Main Workflow',
+                      data: { nodes: [], edges: [] }
+                    });
+                    workflows = [newWorkflow];
+                  }
+
                   router.push(`/workflow?project=${projects[0].id}&workflow=${workflows[0].workflow_id}`);
-                } else {
-                  router.push(`/workflow?project=${projects[0].id}`);
+                } catch (error) {
+                  console.error('Error loading project:', error);
+                  alert('Failed to load project. Please try again.');
                 }
               }}
               className="dashboard-action-node cursor-pointer hover:-translate-y-1 transition-transform"

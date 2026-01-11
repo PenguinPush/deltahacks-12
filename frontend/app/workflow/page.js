@@ -73,14 +73,15 @@ export default function WorkflowPage() {
           <ReactIDE />
         </div>
 
-        {/* Adjusted AI Assistant to be top-right but over the IDE or next to it?
-            User said "mini react ide on the right side ... ai assistant confined to top right"
-            Ideally AI sits on top.
-        */}
-        {/*<AIAssistantPanel*/}
-        {/*  currentNodes={currentNodeTypes}*/}
-        {/*  selectedNode={activeBlockId}*/}
-        {/*/>*/}
+        {/* AI Assistant positioned at top-right */}
+        <AIAssistantPanel
+          currentNodes={currentNodeTypes}
+          selectedNode={activeBlockId}
+          projectId={projectId}
+          workflowId={workflowId}
+          nodes={nodes}
+          edges={edges}
+        />
       </div>
     </ReactFlowProvider>
   );

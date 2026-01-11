@@ -3,11 +3,19 @@ import { apiClient } from "../../services/api";
 import { useStore } from "../../helpers/store";
 import "./AIAssistantPanel.css";
 
-const AIAssistantPanel = ({ currentNodes, selectedNode, projectId, workflowId, nodes, edges }) => {
+const AIAssistantPanel = ({
+  currentNodes,
+  selectedNode,
+  projectId,
+  workflowId,
+  nodes,
+  edges,
+}) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState("qa"); // "qa" or "agent"
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Get store methods for refreshing workflow
@@ -78,11 +86,23 @@ const AIAssistantPanel = ({ currentNodes, selectedNode, projectId, workflowId, n
 
       if (intent === "agent") {
         // Use Gemini agent for actions
+        console.log(
+          "Agent mode - projectId:",
+          projectId,
+          "workflowId:",
+          workflowId
+        );
+
         if (!projectId || !workflowId) {
+          const missingParams = [];
+          if (!projectId) missingParams.push("project");
+          if (!workflowId) missingParams.push("workflow");
+
           assistantMessage = {
             role: "assistant",
-            content:
-              "Please load a project and workflow before using the agent.",
+            content: `Agent mode requires both project and workflow to be loaded. Missing: ${missingParams.join(
+              ", "
+            )}.\n\nPlease:\n1. Go to Dashboard\n2. Click on a project\n3. This will load the workflow and enable the agent.`,
           };
           setMessages((prev) => [...prev, assistantMessage]);
           setIsLoading(false);
@@ -116,7 +136,7 @@ const AIAssistantPanel = ({ currentNodes, selectedNode, projectId, workflowId, n
         // Refresh workflow if updated
         if (response.data.workflowUpdated) {
           // Reload workflow data without full page refresh
-          console.log('Workflow updated, reloading data...');
+          console.log("Workflow updated, reloading data...");
           if (projectId && workflowId) {
             await loadWorkflowFromV2(projectId, workflowId);
           }
@@ -168,14 +188,51 @@ const AIAssistantPanel = ({ currentNodes, selectedNode, projectId, workflowId, n
   };
 
   return (
-    <div className="ai-assistant-panel">
+    <div
+      className={`ai-assistant-panel ${isCollapsed ? "collapsed" : ""}`}
+      onClick={isCollapsed ? () => setIsCollapsed(false) : undefined}
+      title={isCollapsed ? "Click to expand" : ""}
+    >
       <div className="assistant-header">
         <div className="header-left">
-          <span className="assistant-icon">🤖</span>
           <h3>AI Assistant</h3>
+          {projectId && workflowId && (
+            <span
+              style={{
+                fontSize: "10px",
+                color: "var(--color-green)",
+                marginLeft: "8px",
+              }}
+            >
+              ● Ready
+            </span>
+          )}
+          {(!projectId || !workflowId) && (
+            <span
+              style={{
+                fontSize: "10px",
+                color: "var(--text-muted-color)",
+                marginLeft: "8px",
+              }}
+            >
+              ○ Q&A only
+            </span>
+          )}
         </div>
-        <div className="ai-mode-indicator">
-          {currentMode === "qa" ? "💬 Q&A" : "🔧 Agent"}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div className="ai-mode-indicator">
+            {currentMode === "qa" ? "💬 Q&A" : "🔧 Agent"}
+          </div>
+          <button
+            className="collapse-toggle"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering panel onClick
+              setIsCollapsed(!isCollapsed);
+            }}
+            title={isCollapsed ? "Expand" : "Collapse"}
+          >
+            {isCollapsed ? "⬅" : "➡"}
+          </button>
         </div>
       </div>
 
