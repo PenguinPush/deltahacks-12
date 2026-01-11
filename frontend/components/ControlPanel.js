@@ -6,7 +6,13 @@ import Image from 'next/image';
 
 const ControlPanel = () => {
   const router = useRouter();
-  const { addBlock, apiSchemas, executeGraph, saveProject, loadProject, currentProjectId, currentWorkflowId } = useStore();
+  const { addBlock, apiSchemas, executeGraph, saveProject, loadProject, currentProjectId, currentWorkflowId, selectNode } = useStore();
+  // Whether a React I/O node already exists in the current graph
+  const reactExists = useStore(state => (state.nodes || []).some(n => (n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'))));
+  const existingReactNodeId = useStore(state => {
+    const n = (state.nodes || []).find(x => x.data && (x.data.type === 'REACT' || x.data.block_type === 'REACT'));
+    return n ? n.id : null;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [workflows, setWorkflows] = useState([]);
   const fileInputRef = useRef(null);
@@ -52,13 +58,13 @@ const ControlPanel = () => {
     { type: 'DIALOGUE', name: 'Dialogue', description: 'Input and Output display.', icon: '/chat.svg' },
     { type: 'STRING_BUILDER', name: 'String Builder', description: 'Formats text with variables.', icon: '/text.svg' },
     { type: 'LOGIC', name: 'Logic', description: 'Performs conditional logic.', icon: '/branch.svg' },
+    { type: 'API_KEY', name: 'API Key', description: 'Stores and provides an API key.', icon: '/key.svg' },
     { type: 'TRANSFORM', name: 'Transform', description: 'Modifies data formats.', icon: '/shuffle.svg' },
     { type: 'WAIT', name: 'Wait', description: 'Pauses execution.', icon: '/clock.svg' },
-    { type: 'LOOP', name: 'Loop', description: 'Iterates over a list (placeholder).', icon: '/loop.svg' },
   ];
 
   const filteredApiSchemas = Object.entries(apiSchemas)
-    .filter(([key, schema]) =>
+    .filter(([, schema]) =>
       schema.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -116,11 +122,23 @@ const ControlPanel = () => {
           {logicBlockTypes.map(block => (
             <div
               key={block.type}
-              className="block-list-item"
-              onClick={() => addBlock(block.type, { name: block.name })}
-              onDragStart={(event) => onDragStart(event, { type: block.type, params: { name: block.name } })}
-              draggable
-              title={`Add ${block.name} block`}
+              className={`block-list-item ${block.type === 'REACT' && reactExists ? 'disabled' : ''}`}
+              onClick={() => {
+                if (block.type === 'REACT' && reactExists) {
+                  // If a React node exists, select it in the canvas so the user can jump to it
+                  if (existingReactNodeId) {
+                    selectNode(existingReactNodeId, false);
+                  }
+                  return;
+                }
+                addBlock(block.type, { name: block.name });
+              }}
+              onDragStart={(event) => {
+                if (block.type === 'REACT' && reactExists) { event.preventDefault(); return; }
+                onDragStart(event, { type: block.type, params: { name: block.name } });
+              }}
+              draggable={!(block.type === 'REACT' && reactExists)}
+              title={block.type === 'REACT' && reactExists ? 'React I/O (only one allowed)' : `Add ${block.name} block`}
             >
               <Image src={block.icon} alt={`${block.name} icon`} width={18} height={18} className="block-list-item-icon" />
               <div className="block-list-item-content">

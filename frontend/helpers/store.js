@@ -19,6 +19,8 @@ const createFlowNode = (blockData) => ({
     },
     connectable: !blockData.is_collapsed,
     draggable: true, style: blockData.is_collapsed ? { width: '50px', height: '50px' } : {},
+    // Ensure selection flag is present so ReactFlow and our store stay in sync
+    selected: false,
 });
 
 export const useStore = create((set, get) => ({
@@ -31,10 +33,29 @@ export const useStore = create((set, get) => ({
     executionLogs: [],
     hoveredNodeId: null,
     selectedNodeIds: [],
+    selectedNodeId: null,
     isExecuting: false,
     currentProjectId: null,
     currentWorkflowId: null,
     autoSaveTimer: null,
+    
+    // --- THEME & EDITOR ---
+    editorTheme: {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+            { token: 'comment', foreground: '6A9955' },
+            { token: 'keyword', foreground: 'C586C0' },
+            { token: 'identifier', foreground: '9CDCFE' },
+            { token: 'string', foreground: 'CE9178' },
+            { token: 'delimiter', foreground: 'D4D4D4' },
+        ],
+        colors: {
+            'editor.background': '#1E1E1E',
+            'editor.foreground': '#D4D4D4',
+            'editor.lineHighlightBackground': '#2F3337',
+        }
+    },
 
     // --- DATA FETCHING ---
     fetchApiSchemas: async () => {
@@ -53,6 +74,12 @@ export const useStore = create((set, get) => ({
 
             const flowNodes = nodes.map(createFlowNode);
             set({nodes: flowNodes, edges});
+            
+            // Auto-select React node if present
+            const reactNode = flowNodes.find(n => n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'));
+            if (reactNode) {
+                set({ selectedNodeId: reactNode.id });
+            }
         } catch (error) {
             console.error("Failed to fetch graph:", error);
         }
@@ -65,10 +92,17 @@ export const useStore = create((set, get) => ({
         });
         changes.forEach(change => {
             if (change.type === 'position' && change.dragging === false) {
-                const node = get().nodes.find(n => n.id === change.id);
-                if (node) {
-                    axios.post(`${API_URL}/block/update`, {block_id: change.id, x: node.position.x, y: node.position.y})
-                        .catch(err => console.error("Failed to sync position:", err));
+                // Determine if we are in V2 mode or Legacy mode
+                const { currentProjectId, currentWorkflowId, nodes } = get();
+                // If in V2 mode, we only rely on auto-save (saveWorkflowToV2).
+                // We do NOT call the legacy /block/update endpoint to avoid specific block handling conflicts
+                // or needing to keep 'current_project' in main.py in sync with partial updates.
+                if (!currentProjectId || !currentWorkflowId) {
+                     const node = nodes.find(n => n.id === change.id);
+                     if (node) {
+                         axios.post(`${API_URL}/block/update`, {block_id: change.id, x: node.position.x, y: node.position.y})
+                             .catch(err => console.error("Failed to sync position:", err));
+                     }
                 }
             }
         });
@@ -79,21 +113,25 @@ export const useStore = create((set, get) => ({
     onEdgesChange: (changes) => {
         const removedEdges = changes.filter(c => c.type === 'remove');
         if (removedEdges.length > 0) {
-            const currentEdges = get().edges;
-            removedEdges.forEach(removedChange => {
-                const edgeToRemove = currentEdges.find(e => e.id === removedChange.id);
-                if (edgeToRemove) {
-                    axios.post(`${API_URL}/connection/remove`, {
-                        source_id: edgeToRemove.source,
-                        source_output: edgeToRemove.sourceHandle,
-                        target_id: edgeToRemove.target,
-                        target_input: edgeToRemove.targetHandle,
-                    }).catch(err => {
-                        console.error("Failed to remove connection from backend:", err);
-                        get().fetchGraph();
-                    });
-                }
-            });
+            const { currentProjectId, currentWorkflowId, edges } = get();
+
+            // Only use legacy removal if NOT in V2 mode
+            if (!currentProjectId || !currentWorkflowId) {
+                removedEdges.forEach(removedChange => {
+                    const edgeToRemove = edges.find(e => e.id === removedChange.id);
+                    if (edgeToRemove) {
+                        axios.post(`${API_URL}/connection/remove`, {
+                            source_id: edgeToRemove.source,
+                            source_output: edgeToRemove.sourceHandle,
+                            target_id: edgeToRemove.target,
+                            target_input: edgeToRemove.targetHandle,
+                        }).catch(err => {
+                            console.error("Failed to remove connection from backend:", err);
+                            get().fetchGraph();
+                        });
+                    }
+                });
+            }
         }
         set({
             edges: applyEdgeChanges(changes, get().edges),
@@ -114,20 +152,24 @@ export const useStore = create((set, get) => ({
             };
         });
 
-        try {
-            await axios.post(`${API_URL}/connection/add`, {
-                source_id: connection.source,
-                source_output: connection.sourceHandle,
-                target_id: connection.target,
-                target_input: connection.targetHandle,
-            });
-        } catch (error) {
-            console.error("Failed to add connection:", error);
-            set(state => ({
-                edges: state.edges.filter(e => e.id !== tempEdgeId)
-            }));
-            get().fetchGraph(); // Refresh to restore previous state if needed
-            alert("Failed to create connection. The connection has been rolled back.");
+        // Only call legacy endpoint if NOT in V2 mode
+        const { currentProjectId, currentWorkflowId } = get();
+        if (!currentProjectId || !currentWorkflowId) {
+            try {
+                await axios.post(`${API_URL}/connection/add`, {
+                    source_id: connection.source,
+                    source_output: connection.sourceHandle,
+                    target_id: connection.target,
+                    target_input: connection.targetHandle,
+                });
+            } catch (error) {
+                console.error("Failed to add connection:", error);
+                set(state => ({
+                    edges: state.edges.filter(e => e.id !== tempEdgeId)
+                }));
+                get().fetchGraph(); // Refresh to restore previous state if needed
+                alert("Failed to create connection. The connection has been rolled back.");
+            }
         }
         // Trigger auto-save for v2 workflows
         get().scheduleAutoSave();
@@ -135,9 +177,49 @@ export const useStore = create((set, get) => ({
 
     // --- BLOCK & NODE MANAGEMENT ---
     addBlock: async (type, params = {}) => {
+        const { currentProjectId, currentWorkflowId } = get();
+
+        // Prevent adding more than one REACT I/O block
+        if (type === 'REACT') {
+            const exists = get().nodes.some(n => (n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT')));
+            if (exists) {
+                // Inform the user and early return — only one React I/O node allowed
+                if (typeof window !== 'undefined') {
+                    window.alert('A React I/O block already exists in this workflow. Only one is allowed.');
+                }
+                return;
+            }
+        }
+
+        // V2 Mode: Create local node and save entire graph
+        if (currentProjectId && currentWorkflowId) {
+            // In V2 workflow mode we rely on backend-initialized nodes; we don't need a local newNodeId here.
+            // Build minimal node metadata for local creation (we don't reuse it directly here)
+             try {
+                // Use legacy endpoint just to get a properly initialized block structure
+                // But we don't care if it "saves" to the ephemeral current_project
+                const response = await axios.post(`${API_URL}/block/add`, {
+                    type,
+                    name: params.name || `New ${type} Block`,
+                    x: params.x || 150,
+                    y: params.y || 150,
+                    ...params
+                });
+                const initializedBlock = response.data.block;
+                // Force a new ID if needed to ensure uniqueness in V2 context, though backend generated one.
+
+                const flowNode = createFlowNode(initializedBlock);
+                set(state => ({nodes: [...state.nodes, flowNode]}));
+                get().selectNode(flowNode.id);
+                get().scheduleAutoSave();
+             } catch (error) {
+                 console.error("Failed to init block via backend:", error);
+             }
+             return;
+        }
+
+        // Legacy Mode
         try {
-            // CRITICAL FIX: Instead of refetching, we now use the direct response from the backend.
-            // This guarantees the new block is correct, solving the "blank API block" bug.
             const response = await axios.post(`${API_URL}/block/add`, {
                 type,
                 name: params.name || `New ${type} Block`,
@@ -149,7 +231,8 @@ export const useStore = create((set, get) => ({
 
             const flowNode = createFlowNode(newNodeData);
             set(state => ({nodes: [...state.nodes, flowNode]}));
-            // Trigger auto-save for v2 workflows
+            // Trigger auto-save for v2 workflows (if applicable, though we are in legacy block)
+            get().selectNode(flowNode.id);
             get().scheduleAutoSave();
         } catch (error) {
             console.error("Failed to add block:", error);
@@ -157,49 +240,58 @@ export const useStore = create((set, get) => ({
     },
 
     updateNode: async (nodeId, data) => {
-        try {
-            // CRITICAL FIX: We update the local state precisely using the backend response,
-            // avoiding a full graph refetch that would overwrite other optimistic UI changes.
-            const response = await axios.post(`${API_URL}/block/update`, {block_id: nodeId, ...data});
-            const updatedNodeData = response.data.block;
+        const { currentProjectId, currentWorkflowId } = get();
 
-            set(state => ({
-                nodes: state.nodes.map(n => {
-                    if (n.id === nodeId) {
-                        return createFlowNode(updatedNodeData);
-                    }
-                    return n;
-                })
-            }));
-            // Trigger auto-save for v2 workflows
-            get().scheduleAutoSave();
-        } catch (error) {
-            console.error("Failed to update node:", error);
+        // Optimistic update first
+        set(state => ({
+            nodes: state.nodes.map(n => {
+                if (n.id === nodeId) {
+                    // Merge data into n.data
+                    return { ...n, data: { ...n.data, ...data } };
+                }
+                return n;
+            })
+        }));
+        get().scheduleAutoSave();
+
+        // If Legacy mode, sync to backend endpoint
+        if (!currentProjectId || !currentWorkflowId) {
+            try {
+                await axios.post(`${API_URL}/block/update`, {block_id: nodeId, ...data});
+                // ... legacy logic
+            } catch (error) {
+                console.error("Failed to update node:", error);
+            }
         }
     },
 
     updateInputValue: async (nodeId, inputKey, value) => {
-        try {
-            await axios.post(`${API_URL}/block/update_input_value`, {
-                block_id: nodeId,
-                input_key: inputKey,
-                value: value,
-            });
-            set(state => ({
-                nodes: state.nodes.map(node => {
-                    if (node.id === nodeId) {
-                        const newInputs = node.data.inputs.map(input =>
-                            input.key === inputKey ? {...input, value: value} : input
-                        );
-                        return {...node, data: {...node.data, inputs: newInputs}};
-                    }
-                    return node;
-                })
-            }));
-            // Trigger auto-save for v2 workflows
-            get().scheduleAutoSave();
-        } catch (error) {
-            console.error("Failed to update input value:", error);
+        // Optimistic update
+        set(state => ({
+            nodes: state.nodes.map(node => {
+                if (node.id === nodeId) {
+                    const newInputs = (node.data.inputs || []).map(input =>
+                        input.key === inputKey ? {...input, value: value} : input
+                    );
+                    return {...node, data: {...node.data, inputs: newInputs}};
+                }
+                return node;
+            })
+        }));
+        get().scheduleAutoSave();
+
+        // Legacy sync
+        const { currentProjectId, currentWorkflowId } = get();
+        if (!currentProjectId || !currentWorkflowId) {
+            try {
+                await axios.post(`${API_URL}/block/update_input_value`, {
+                    block_id: nodeId,
+                    input_key: inputKey,
+                    value: value,
+                });
+            } catch (error) {
+                console.error("Failed to update input value:", error);
+            }
         }
     },
 
@@ -231,16 +323,21 @@ export const useStore = create((set, get) => ({
     },
 
     removeBlock: async (nodeId) => {
-        try {
-            await axios.post(`${API_URL}/block/remove`, {block_id: nodeId});
-            set(state => ({
-                nodes: state.nodes.filter(n => n.id !== nodeId),
-                edges: state.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
-            }));
-            // Trigger auto-save for v2 workflows
-            get().scheduleAutoSave();
-        } catch (error) {
-            console.error("Failed to remove block:", error);
+        // Optimistic removal
+        set(state => ({
+            nodes: state.nodes.filter(n => n.id !== nodeId),
+            edges: state.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
+        }));
+        get().scheduleAutoSave();
+
+        const { currentProjectId, currentWorkflowId } = get();
+        // Legacy Sync
+        if (!currentProjectId || !currentWorkflowId) {
+            try {
+                await axios.post(`${API_URL}/block/remove`, {block_id: nodeId});
+            } catch (error) {
+                console.error("Failed to remove block:", error);
+            }
         }
     },
 
@@ -297,7 +394,7 @@ export const useStore = create((set, get) => ({
             } else {
                 // Otherwise, consider hovered and selected nodes
                 if (state.hoveredNodeId) hotNodeIds.add(state.hoveredNodeId);
-                state.selectedNodeIds.forEach(id => hotNodeIds.add(id));
+                // state.selectedNodeIds.forEach(id => hotNodeIds.add(id));
             }
 
             const newEdges = state.edges.map(edge => {
@@ -317,9 +414,65 @@ export const useStore = create((set, get) => ({
         });
     },
 
-    onSelectionChange: ({ nodes: selectedFlowNodes }) => {
-        set({ selectedNodeIds: selectedFlowNodes.map(n => n.id) });
-        get()._updateEdgeAnimations();
+    onSelectionChange: ({ nodes: selectedNodes }) => {
+        const selectedIds = (selectedNodes || []).map(n => n.id);
+        
+        // Editor Logic: Always point to React Node if it exists
+        const reactNode = get().nodes.find(n => n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'));
+        let editorTargetId = null;
+        if (reactNode) {
+            editorTargetId = reactNode.id;
+        } else {
+            editorTargetId = selectedIds.length === 1 ? selectedIds[0] : null;
+        }
+        
+        const activeId = selectedIds.length === 1 ? selectedIds[0] : null;
+
+        // Update node.selected flags so other parts of the UI (and ReactFlow) stay consistent
+        set(state => ({
+            nodes: state.nodes.map(n => {
+                const shouldBeSelected = selectedIds.includes(n.id);
+                if (n.selected === shouldBeSelected) return n;
+                return { ...n, selected: shouldBeSelected };
+            }),
+            selectedNodeIds: selectedIds,
+            activeBlockId: state.isExecuting ? state.activeBlockId : activeId, 
+            selectedNodeId: editorTargetId // Sync selectedNodeId for ReactIDE (forced to React Node if present)
+        }));
+    },
+
+    // Programmatically select nodes. If `additive` is true, toggle/add to existing selection
+    selectNode: (nodeId, additive = false) => {
+        set(state => {
+            let newSelectedIds;
+
+            if (additive) {
+                // Toggle selection of the clicked node while preserving others
+                const currentlySelected = state.selectedNodeIds.includes(nodeId);
+                newSelectedIds = currentlySelected
+                    ? state.selectedNodeIds.filter(id => id !== nodeId)
+                    : [...state.selectedNodeIds, nodeId];
+            } else {
+                // Default: single selection or clear
+                newSelectedIds = nodeId ? [nodeId] : [];
+            }
+
+            // Editor Logic: Always point to React Node if it exists
+            const reactNode = state.nodes.find(n => n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'));
+            let editorTargetId = null;
+            if (reactNode) {
+                editorTargetId = reactNode.id;
+            } else {
+                editorTargetId = newSelectedIds.length === 1 ? newSelectedIds[0] : null;
+            }
+
+            return {
+                nodes: state.nodes.map(n => ({ ...n, selected: newSelectedIds.includes(n.id) })),
+                selectedNodeIds: newSelectedIds,
+                selectedNodeId: editorTargetId,
+                activeBlockId: state.isExecuting ? state.activeBlockId : (newSelectedIds.length === 1 ? newSelectedIds[0] : null)
+            };
+        });
     },
 
     setHoveredNodeId: (nodeId) => {
@@ -542,6 +695,12 @@ export const useStore = create((set, get) => ({
             });
 
             console.log('✅ Workflow loaded successfully:', { nodes: flowNodes.length, edges: flowEdges.length });
+            
+            // Auto-select React node if present
+            const reactNode = flowNodes.find(n => n.data && (n.data.type === 'REACT' || n.data.block_type === 'REACT'));
+            if (reactNode) {
+                set({ selectedNodeId: reactNode.id });
+            }
         } catch (error) {
             console.error("Failed to load workflow:", error);
             // Initialize with empty workflow if load fails

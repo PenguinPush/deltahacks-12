@@ -54,49 +54,41 @@ def get_projects(current_user):
         traceback.print_exc()
         return jsonify({"error": f"Failed to list projects: {str(e)}"}), 500
 
+@api_v2.route('/projects/<project_id>/workflows', methods=['POST'])
+@require_auth
+def create_workflow(current_user, project_id):
+    """Creates a new workflow within a project."""
+    try:
+        user_id = current_user.get('sub')
+        data = request.json
+        workflow_name = data.get("name", "New Workflow")
 
-# ==========================================
-# PART 2: Workflow CRUD Endpoints
-# ==========================================
+        from user_service import UserService
+        workflow = UserService.create_workflow(user_id, project_id, workflow_name)
+
+        return jsonify({
+            "status": "created",
+            "workflow_id": workflow.get('workflow_id'),
+            "workflow": workflow
+        }), 201
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 404
+    except Exception as e:
+        logger.error(f"Error creating workflow: {e}", exc_info=True)
+        return jsonify({"error": "Failed to create workflow"}), 500
 
 @api_v2.route('/projects/<project_id>/workflows', methods=['GET'])
 @require_auth
-def get_workflows(current_user, project_id):
+def list_workflows(current_user, project_id):
     """Lists all workflows in a project."""
     try:
         user_id = current_user.get('sub')
         from user_service import UserService
         workflows = UserService.get_all_workflows(user_id, project_id)
-
-        return jsonify({"workflows": workflows}), 200
+        return jsonify(workflows), 200
     except Exception as e:
-        logger.error(f"Error fetching workflows for project '{project_id}': {e}", exc_info=True)
-        return jsonify({"error": f"Failed to fetch workflows: {str(e)}"}), 500
-
-
-@api_v2.route('/projects/<project_id>/workflows', methods=['POST'])
-@require_auth
-def create_workflow(current_user, project_id):
-    """Creates a new workflow in a project."""
-    try:
-        user_id = current_user.get('sub')
-        data = request.json
-        workflow_name = data.get("name", "New Workflow")
-        workflow_data = data.get("data", {"nodes": [], "edges": []})
-
-        from user_service import UserService
-        workflow = UserService.create_workflow(user_id, project_id, workflow_name, workflow_data)
-
-        logger.info(f"User '{user_id}' created workflow '{workflow_name}' in project '{project_id}'")
-
-        return jsonify({
-            "status": "created",
-            "workflow": workflow
-        }), 201
-    except Exception as e:
-        logger.error(f"Error creating workflow in project '{project_id}': {e}", exc_info=True)
-        return jsonify({"error": "Failed to create workflow"}), 500
-
+        logger.error(f"Error listing workflows: {e}", exc_info=True)
+        return jsonify({"error": "Failed to list workflows"}), 500
 
 @api_v2.route('/projects/<project_id>/workflows/<workflow_id>', methods=['GET'])
 @require_auth
@@ -112,34 +104,31 @@ def get_workflow(current_user, project_id, workflow_id):
 
         return jsonify(workflow), 200
     except Exception as e:
-        logger.error(f"Error fetching workflow '{workflow_id}': {e}", exc_info=True)
-        return jsonify({"error": "Failed to fetch workflow"}), 500
-
+        logger.error(f"Error getting workflow: {e}", exc_info=True)
+        return jsonify({"error": "Failed to get workflow"}), 500
 
 @api_v2.route('/projects/<project_id>/workflows/<workflow_id>', methods=['PUT'])
 @require_auth
 def update_workflow(current_user, project_id, workflow_id):
-    """Updates a workflow (nodes/edges/metadata)."""
+    """Updates a workflow's data (nodes, edges)."""
     try:
         user_id = current_user.get('sub')
         data = request.json
+        workflow_data = data.get("data") # Expects { nodes: [], edges: [] }
+
+        if workflow_data is None:
+             return jsonify({"error": "Missing 'data' field"}), 400
 
         from user_service import UserService
-        workflow = UserService.update_workflow(user_id, project_id, workflow_id, data)
+        success = UserService.update_workflow(user_id, project_id, workflow_id, workflow_data)
 
-        if not workflow:
-            return jsonify({"error": "Workflow not found"}), 404
-
-        logger.info(f"User '{user_id}' updated workflow '{workflow_id}'")
-
-        return jsonify({
-            "status": "updated",
-            "workflow": workflow
-        }), 200
+        if success:
+            return jsonify({"status": "updated"}), 200
+        else:
+            return jsonify({"error": "Workflow not found or update failed"}), 404
     except Exception as e:
-        logger.error(f"Error updating workflow '{workflow_id}': {e}", exc_info=True)
+        logger.error(f"Error updating workflow: {e}", exc_info=True)
         return jsonify({"error": "Failed to update workflow"}), 500
-
 
 @api_v2.route('/projects/<project_id>/workflows/<workflow_id>', methods=['DELETE'])
 @require_auth
@@ -150,117 +139,10 @@ def delete_workflow(current_user, project_id, workflow_id):
         from user_service import UserService
         success = UserService.delete_workflow(user_id, project_id, workflow_id)
 
-        if not success:
+        if success:
+            return jsonify({"status": "deleted"}), 200
+        else:
             return jsonify({"error": "Workflow not found"}), 404
-
-        logger.info(f"User '{user_id}' deleted workflow '{workflow_id}'")
-
-        return jsonify({"status": "deleted"}), 200
     except Exception as e:
-        logger.error(f"Error deleting workflow '{workflow_id}': {e}", exc_info=True)
+        logger.error(f"Error deleting workflow: {e}", exc_info=True)
         return jsonify({"error": "Failed to delete workflow"}), 500
-
-
-@api_v2.route('/projects/<project_id>/workflows/<workflow_id>/execute', methods=['POST'])
-@require_auth
-def execute_workflow(current_user, project_id, workflow_id):
-    """Executes a workflow and returns results."""
-    try:
-        user_id = current_user.get('sub')
-        from user_service import UserService
-
-        # Get workflow from database
-        workflow = UserService.get_workflow(user_id, project_id, workflow_id)
-        if not workflow:
-            return jsonify({"error": "Workflow not found"}), 404
-
-        # Convert workflow data to Block objects and execute
-        from main import execute_graph
-        from block_types.api_block import APIBlock
-        from block_types.logic_block import LogicBlock
-        from block_types.react_block import ReactBlock
-        from block_types.transform_block import TransformBlock
-        from block_types.start_block import StartBlock
-        from block_types.string_builder_block import StringBuilderBlock
-        from block_types.wait_block import WaitBlock
-        from block_types.dialogue_block import DialogueBlock
-        from block_types.loop_block import LoopBlock
-
-        # Build blocks map from workflow data
-        blocks_map = {}
-        workflow_data = workflow.get('data', {})
-        nodes = workflow_data.get('nodes', [])
-        edges = workflow_data.get('edges', [])
-
-        # Create Block instances
-        for node in nodes:
-            node_type = node.get('type')
-            node_id = node.get('id')
-            node_data = node.get('data', {})
-
-            if node_type == 'API':
-                block = APIBlock(
-                    node_data.get('name', 'API Block'),
-                    node_data.get('schema_key', 'custom'),
-                    x=node.get('position', {}).get('x', 0),
-                    y=node.get('position', {}).get('y', 0)
-                )
-                block.id = node_id
-            elif node_type == 'LOGIC':
-                block = LogicBlock(
-                    node_data.get('name', 'Logic Block'),
-                    node_data.get('operation', 'add'),
-                    x=node.get('position', {}).get('x', 0),
-                    y=node.get('position', {}).get('y', 0)
-                )
-                block.id = node_id
-            elif node_type == 'START':
-                block = StartBlock(
-                    node_data.get('name', 'Start'),
-                    x=node.get('position', {}).get('x', 0),
-                    y=node.get('position', {}).get('y', 0)
-                )
-                block.id = node_id
-            # Add more block types as needed
-            else:
-                continue
-
-            blocks_map[node_id] = block
-
-        # Connect blocks based on edges
-        for edge in edges:
-            source_id = edge.get('source')
-            target_id = edge.get('target')
-            source_handle = edge.get('sourceHandle')
-            target_handle = edge.get('targetHandle')
-
-            if source_id in blocks_map and target_id in blocks_map:
-                source_block = blocks_map[source_id]
-                target_block = blocks_map[target_id]
-                try:
-                    source_block.connect(source_handle, target_block, target_handle)
-                except Exception as e:
-                    logger.warning(f"Failed to connect {source_id} to {target_id}: {e}")
-
-        # Find start blocks
-        start_blocks = [block for block in blocks_map.values() if isinstance(block, StartBlock)]
-
-        if not start_blocks:
-            return jsonify({"error": "No Start block found in workflow"}), 400
-
-        # Execute workflow and collect results
-        execution_results = []
-        for event_json in execute_graph(start_blocks, blocks_map):
-            import json
-            event = json.loads(event_json)
-            execution_results.append(event)
-
-        logger.info(f"User '{user_id}' executed workflow '{workflow_id}'")
-
-        return jsonify({
-            "status": "executed",
-            "results": execution_results
-        }), 200
-    except Exception as e:
-        logger.error(f"Error executing workflow '{workflow_id}': {e}", exc_info=True)
-        return jsonify({"error": f"Workflow execution failed: {str(e)}"}), 500
