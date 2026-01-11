@@ -240,5 +240,16 @@
       "difficulty": "beginner",
       "tags": "core,ui,input,output"
     }
+  },
+  {
+    "id": "node_api_key",
+    "text": "API Key Node - Securely stores and provides API keys from your backend's .env file. Input ports: trigger (execution signal). Output ports: key (the selected API key string). Configuration: Select the desired key from a dropdown of available keys (prefixed with FLOW_API_KEY_ in your .env). Common workflow patterns: Connect to API nodes that require authentication (e.g., OpenAI, Google Gemini). Best practices: Store API keys in your backend's .env file, not directly in the workflow JSON. Use specific prefixes (like FLOW_API_KEY_) for organization. Never commit your .env file to version control.",
+    "metadata": {
+      "category": "Utility",
+      "provider": "system",
+      "nodeType": "utility",
+      "difficulty": "beginner",
+      "tags": "api,key,secret,auth,credential"
+    }
   }
 ]

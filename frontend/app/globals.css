@@ -658,14 +658,60 @@ input, textarea, select, button {
     color: #fff;
     border-left: 1px solid var(--border-color);
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;
+    transform: translateX(0);
+    position: relative; /* Needed for absolute positioning of toggle */
 }
 
 .react-ide-panel.collapsed {
-    width: 30px;
-    min-width: 30px;
-    overflow: hidden;
-    cursor: pointer;
+    width: 36px; /* Collapsed width */
+    transform: translateX(0); /* Ensure it stays on screen */
+    overflow: hidden; /* Hide content */
+    cursor: pointer; /* Indicate it's clickable to expand */
 }
+
+.react-ide-panel.collapsed .ide-editor-container,
+.react-ide-panel.collapsed .ide-preview-container {
+    display: none; /* Hide content when collapsed */
+}
+
+.react-ide-panel.collapsed .ide-tabs,
+.react-ide-panel.collapsed .ide-node-name {
+    display: none; /* Hide tabs and node name when collapsed */
+}
+
+.react-ide-panel .ide-header {
+    position: relative; /* For positioning the toggle button */
+}
+
+.react-ide-panel .collapse-toggle {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    z-index: 10;
+    transition: transform 0.3s ease-in-out, right 0.3s ease-in-out;
+}
+
+.react-ide-panel.collapsed .collapse-toggle {
+    right: 0; /* Position relative to the collapsed width */
+    transform: translateY(-50%) rotate(180deg); /* Rotate arrow when collapsed */
+    color: #fff;
+}
+
+.react-ide-panel.collapsed .ide-header {
+    justify-content: center;
+    padding: 0;
+    border-bottom: none;
+    background: transparent; /* Make it blend with the background */
+}
+
 
 .ide-header {
     display: flex;
