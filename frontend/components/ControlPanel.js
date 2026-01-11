@@ -3,13 +3,35 @@ import { useStore } from '../helpers/store';
 import Image from 'next/image';
 
 const ControlPanel = () => {
-  const { addBlock, apiSchemas } = useStore();
+  const { addBlock, apiSchemas, executeGraph, saveProject, loadProject } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const fileInputRef = useRef(null);
 
   const onDragStart = (event, blockData) => {
     const dataString = JSON.stringify(blockData);
     event.dataTransfer.setData('application/reactflow', dataString);
     event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleLoadClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const projectData = JSON.parse(e.target.result);
+        loadProject(projectData);
+      } catch (error) {
+        console.error("Error parsing project file:", error);
+        alert("Invalid project file. Please select a valid JSON file.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   const logicBlockTypes = [
@@ -28,10 +50,28 @@ const ControlPanel = () => {
 
   return (
     <aside className="control-panel" onDrop={(e) => e.preventDefault()}>
-      <h3>Blocks</h3>
+      <div className="panel-header-buttons">
+        <button onClick={saveProject} title="Save Project">
+          <Image src="/save.svg" alt="Save" width={20} height={20} />
+        </button>
+        <button onClick={handleLoadClick} title="Load Project">
+          <Image src="/load.svg" alt="Load" width={20} height={20} />
+        </button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+          accept=".json,application/json"
+        />
+        <button onClick={executeGraph} className="execute-button" title="Run Graph">
+          <Image src="/play.svg" alt="Run" width={20} height={20} />
+        </button>
+      </div>
+
       <div className="controls-section">
         <h4>Logic Blocks</h4>
-        <div className="block-list">
+        <div className="logic-grid">
           {logicBlockTypes.map(block => (
             <div 
               key={block.type} 

@@ -16,6 +16,7 @@ export const useStore = create((set, get) => ({
     apiSchemas: {},
     activeBlockId: null,
     executionLogs: [],
+    hoveredNodeId: null,
 
     // --- DATA FETCHING ---
     fetchApiSchemas: async () => {
@@ -87,9 +88,14 @@ export const useStore = create((set, get) => ({
 
     onConnect: async (connection) => {
         const tempEdgeId = `edge-${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`;
-        const optimisticEdge = {...connection, id: tempEdgeId};
-        set({
-            edges: addEdge(optimisticEdge, get().edges),
+        const optimisticEdge = {...connection, id: tempEdgeId, type: 'straight'};
+        
+        set(state => {
+            // Ensure inputs only have one connection by removing any existing edge to the target handle
+            const filteredEdges = state.edges.filter(e => !(e.target === connection.target && e.targetHandle === connection.targetHandle));
+            return {
+                edges: addEdge(optimisticEdge, filteredEdges),
+            };
         });
 
         try {
@@ -104,6 +110,7 @@ export const useStore = create((set, get) => ({
             set(state => ({
                 edges: state.edges.filter(e => e.id !== tempEdgeId)
             }));
+            get().fetchGraph(); // Refresh to restore previous state if needed
             alert("Failed to create connection. The connection has been rolled back.");
         }
     },
@@ -205,6 +212,20 @@ export const useStore = create((set, get) => ({
             axios.post(`${API_URL}/block/update`, {block_id: nodeId, menu_open: newMenuState})
                 .catch(err => console.error("Failed to sync menu state:", err));
         }
+    },
+
+    setHoveredNodeId: (nodeId) => {
+        set(state => {
+            if (state.hoveredNodeId === nodeId) return {};
+            
+            const newEdges = state.edges.map(edge => {
+                const isConnected = nodeId && (edge.source === nodeId || edge.target === nodeId);
+                const newClassName = isConnected ? 'animated-edge' : '';
+                if (edge.className === newClassName) return edge;
+                return { ...edge, className: newClassName };
+            });
+            return { hoveredNodeId: nodeId, edges: newEdges };
+        });
     },
 
     togglePortVisibility: (nodeId, key, type) => {

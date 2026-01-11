@@ -2,7 +2,6 @@
 
 import { ReactFlowProvider } from 'reactflow';
 import ControlPanel from '../components/ControlPanel';
-import TopBar from '../components/TopBar';
 import dynamic from 'next/dynamic';
 import ExecutionLog from '../components/ExecutionLog';
 
@@ -17,7 +16,6 @@ export default function HomePage() {
       <div className="app-layout">
         <ControlPanel />
         <div className="main-content">
-          <TopBar />
           <main className="flow-container">
             <FlowCanvas />
             <ExecutionLog />
