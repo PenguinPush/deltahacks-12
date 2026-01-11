@@ -50,6 +50,21 @@ const CustomNode = ({ data }) => {
     updateNode(data.id, { delay: e.target.value });
   };
 
+  const getHeaderClass = () => {
+    switch (data.type) {
+      case 'API': return 'node-header-api';
+      case 'START': return 'node-header-start';
+      case 'REACT': return 'node-header-react';
+      case 'STRING_BUILDER': return 'node-header-string';
+      case 'LOGIC': return 'node-header-logic';
+      case 'TRANSFORM': return 'node-header-transform';
+      case 'WAIT': return 'node-header-wait';
+      case 'LOOP': return 'node-header-logic'; // Reuse logic color
+      case 'DIALOGUE': return 'node-header-dialogue';
+      default: return '';
+    }
+  };
+
   // The menu component, rendered conditionally
   const SettingsMenu = () => (
  <div className="node-menu nodrag" onWheel={(e) => e.stopPropagation()}>
@@ -153,35 +168,20 @@ const CustomNode = ({ data }) => {
 
   const isActive = activeBlockId === data.id;
 
-  const getHeaderClass = () => {
-    switch (data.type) {
-      case 'API': return 'node-header-api';
-      case 'START': return 'node-header-start';
-      case 'REACT': return 'node-header-react';
-      case 'STRING_BUILDER': return 'node-header-string';
-      case 'LOGIC': return 'node-header-logic';
-      case 'TRANSFORM': return 'node-header-transform';
-      case 'WAIT': return 'node-header-wait';
-      case 'LOOP': return 'node-header-logic'; // Reuse logic color
-      case 'DIALOGUE': return 'node-header-dialogue';
-      default: return '';
-    }
-  };
-
   return (
     <div className={`custom-node ${isActive ? 'active-block' : ''}`}>
       {getIconForType(data.type) && (
         <div className={`node-icon-nub ${getHeaderClass()}`}>
           <Image 
             src={getIconForType(data.type)} 
-            width={28} 
-            height={28} 
+            width={22} 
+            height={22} 
             alt="" 
             className="node-nub-icon" 
           />
         </div>
       )}
-      <div className={`node-header ${getHeaderClass()}`}>
+       <div className={`node-header ${getHeaderClass()}`}>
         <div style={{ display: 'grid', marginRight: 'auto' }}>
           <span style={{ 
             gridArea: '1/1', 
@@ -250,7 +250,7 @@ const CustomNode = ({ data }) => {
               style={{ width: '100%', marginBottom: '5px' }}
             >
               <option value="to_string">To String</option>
-              <option value="to_string">Get Key from JSON</option>
+              <option value="get_key">Get Key from JSON</option>
               <option value="to_json">To JSON</option>
               <option value="params_to_json">Params to JSON</option>
             </select>
