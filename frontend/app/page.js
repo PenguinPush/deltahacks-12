@@ -4,10 +4,14 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReactFlowProvider } from 'reactflow';
-import FlowCanvas from '@/components/FlowCanvas';
-import TopBar from '@/components/TopBar';
-import ControlPanel from '@/components/ControlPanel';
-import ExecutionLog from '@/components/ExecutionLog';
+import ControlPanel from '../components/ControlPanel';
+import dynamic from 'next/dynamic';
+import ExecutionLog from '../components/ExecutionLog';
+
+// Dynamically import client-only components to prevent SSR hydration errors.
+// ReactFlow and its related components often rely on browser APIs (like getBoundingClientRect)
+// that are not available on the server, leading to mismatches.
+const FlowCanvas = dynamic(() => import('../components/FlowCanvas'), { ssr: false });
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -31,16 +35,15 @@ export default function HomePage() {
 
   return (
     <ReactFlowProvider>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <TopBar />
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <ControlPanel />
-          <div style={{ flex: 1, position: 'relative' }}>
+      <div className="app-layout">
+        <ControlPanel />
+        <div className="main-content">
+          <main className="flow-container">
             <FlowCanvas />
-          </div>
-          <ExecutionLog />
         </div>
+        <ExecutionLog />
       </div>
-    </ReactFlowProvider>
+    </div>
+    </ReactFlowProvider >
   );
 }

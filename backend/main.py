@@ -394,7 +394,8 @@ def get_graph_structure():
                     "source": block.id,
                     "sourceHandle": output_key,
                     "target": connector.target_block.id,
-                    "targetHandle": connector.target_input_key
+                    "targetHandle": connector.target_input_key,
+                    "type": "straight"
                 })
 
     return jsonify({"nodes": nodes, "edges": edges})

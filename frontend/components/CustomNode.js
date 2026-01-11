@@ -93,7 +93,7 @@ const CustomNode = ({ data }) => {
 
     return (
       <div key={port.key} className="port">
-        {type === 'input' && <Handle type="target" position={Position.Left} id={port.key} />}
+        {type === 'input' && <Handle type="target" position={Position.Left} id={port.key} className={isConnected ? 'handle-connected' : ''} />}
         
         <div className="port-label">
           <span>{port.key}</span>
@@ -115,16 +115,29 @@ const CustomNode = ({ data }) => {
           />
         )}
 
-        {type === 'output' && <Handle type="source" position={Position.Right} id={port.key} />}
+        {type === 'output' && <Handle type="source" position={Position.Right} id={port.key} className={isConnected ? 'handle-connected' : ''} />}
       </div>
     );
   };
 
   const isActive = activeBlockId === data.id;
 
+  const getHeaderClass = () => {
+    switch (data.type) {
+      case 'API': return 'node-header-api';
+      case 'START': return 'node-header-start';
+      case 'REACT': return 'node-header-react';
+      case 'STRING_BUILDER': return 'node-header-string';
+      case 'LOGIC': return 'node-header-logic';
+      case 'TRANSFORM': return 'node-header-transform';
+      case 'WAIT': return 'node-header-wait';
+      default: return '';
+    }
+  };
+
   return (
     <div className={`custom-node ${isActive ? 'active-block' : ''}`}>
-      <div className="node-header">
+      <div className={`node-header ${getHeaderClass()}`}>
         <input 
           type="text" 
           defaultValue={data.name} 
