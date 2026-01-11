@@ -2,7 +2,7 @@
 API_SCHEMAS = {
     "custom": {
         "name": "Custom API",
-        "url": "", # URL is provided by an input for custom requests
+        "url": "",  # URL is provided by an input for custom requests
         "method": "GET",
         "doc_url": "https://httpbin.org/",
         # For custom, we use generic inputs. The block logic will treat them specially.
@@ -22,7 +22,7 @@ API_SCHEMAS = {
         "url": "https://catfact.ninja/fact",
         "method": "GET",
         "doc_url": "https://catfact.ninja/",
-        "inputs": {}, # No inputs needed for this specific endpoint
+        "inputs": {},  # No inputs needed for this specific endpoint
         "outputs": {
             # These keys should match the API response for automatic mapping
             "fact": {"type": "string"},
@@ -109,7 +109,7 @@ API_SCHEMAS = {
             "records": {"type": "json"}
         }
     },
-     "twilio_send_sms": {
+    "twilio_send_sms": {
         "name": "Twilio: Send SMS",
         "doc_url": "https://www.twilio.com/docs/sms/api/message-resource",
         "url": "https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages.json",
@@ -119,8 +119,8 @@ API_SCHEMAS = {
             "path": {
                 "AccountSid": {"type": "string", "default": ""}
             },
-            "headers": {
-                "Authorization": {"type": "string", "default": "Basic <Base64 Credentials>"}
+            "auth": {
+                "AuthToken": {"type": "string", "default": ""}
             },
             "body": {
                 "To": {"type": "string", "default": "+1"},
@@ -304,8 +304,8 @@ API_SCHEMAS = {
                 "webhook_url": {"type": "string", "default": "https://discord.com/api/webhooks/..."}
             },
             "body": {
-                "content": {"type": "string", "default": "Hello from NodeLink!"},
-                "username": {"type": "string", "default": "NodeLink Bot", "hidden": True},
+                "content": {"type": "string", "default": "Hello World!"},
+                "username": {"type": "string", "default": "Protosynthesis", "hidden": True},
                 "embeds": {"type": "json", "default": [], "hidden": True}
             }
         },

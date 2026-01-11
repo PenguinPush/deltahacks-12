@@ -6,7 +6,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 const nunito = Nunito({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'NodeLink - API Workflow Builder',
+  title: 'Protosynthesis - API Workflow Builder',
   description: 'Build API workflows visually with authentication',
 };
 

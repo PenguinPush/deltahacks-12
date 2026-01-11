@@ -107,7 +107,7 @@ export const useStore = create((set, get) => ({
             }
         });
         // Trigger auto-save for v2 workflows
-        get().scheduleAutoSave();
+
     },
 
     onEdgesChange: (changes) => {
@@ -137,7 +137,6 @@ export const useStore = create((set, get) => ({
             edges: applyEdgeChanges(changes, get().edges),
         });
         // Trigger auto-save for v2 workflows
-        get().scheduleAutoSave();
     },
 
     onConnect: async (connection) => {
@@ -172,7 +171,6 @@ export const useStore = create((set, get) => ({
             }
         }
         // Trigger auto-save for v2 workflows
-        get().scheduleAutoSave();
     },
 
     // --- BLOCK & NODE MANAGEMENT ---
@@ -209,9 +207,9 @@ export const useStore = create((set, get) => ({
                 // Force a new ID if needed to ensure uniqueness in V2 context, though backend generated one.
 
                 const flowNode = createFlowNode(initializedBlock);
+                console.log("Adding flowNode (V2 mode):", flowNode); // Added log
                 set(state => ({nodes: [...state.nodes, flowNode]}));
                 get().selectNode(flowNode.id);
-                get().scheduleAutoSave();
              } catch (error) {
                  console.error("Failed to init block via backend:", error);
              }
@@ -230,6 +228,7 @@ export const useStore = create((set, get) => ({
             const newNodeData = response.data.block;
 
             const flowNode = createFlowNode(newNodeData);
+            console.log("Adding flowNode (Legacy mode):", flowNode); // Added log
             set(state => ({nodes: [...state.nodes, flowNode]}));
             // Trigger auto-save for v2 workflows (if applicable, though we are in legacy block)
             get().selectNode(flowNode.id);
@@ -252,7 +251,6 @@ export const useStore = create((set, get) => ({
                 return n;
             })
         }));
-        get().scheduleAutoSave();
 
         // If Legacy mode, sync to backend endpoint
         if (!currentProjectId || !currentWorkflowId) {
@@ -278,7 +276,6 @@ export const useStore = create((set, get) => ({
                 return node;
             })
         }));
-        get().scheduleAutoSave();
 
         // Legacy sync
         const { currentProjectId, currentWorkflowId } = get();
@@ -328,7 +325,6 @@ export const useStore = create((set, get) => ({
             nodes: state.nodes.filter(n => n.id !== nodeId),
             edges: state.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
         }));
-        get().scheduleAutoSave();
 
         const { currentProjectId, currentWorkflowId } = get();
         // Legacy Sync
@@ -709,40 +705,6 @@ export const useStore = create((set, get) => ({
     },
 
     saveWorkflowToV2: async () => {
-        const state = get();
-        const { currentProjectId, currentWorkflowId, nodes, edges } = state;
-
-        if (!currentProjectId || !currentWorkflowId) {
-            console.warn('No workflow set, skipping save');
-            return;
-        }
-
-        try {
-            // Convert ReactFlow nodes back to simple data format
-            const simpleNodes = nodes.map(node => ({
-                id: node.id,
-                x: node.position.x,
-                y: node.position.y,
-                ...node.data
-            }));
-
-            await apiClient.put(
-                `/v2/projects/${currentProjectId}/workflows/${currentWorkflowId}`,
-                {
-                    data: {
-                        nodes: simpleNodes,
-                        edges: edges
-                    }
-                }
-            );
-
-            console.log('✅ Workflow auto-saved');
-        } catch (error) {
-            console.error("Failed to save workflow:", error);
-        }
-    },
-
-    scheduleAutoSave: () => {
         const state = get();
 
         // Clear existing timer

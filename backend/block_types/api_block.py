@@ -1,5 +1,6 @@
 import requests
 import json
+import base64
 from blocks import Block
 from api_schemas import API_SCHEMAS
 from typing import Set
@@ -70,7 +71,7 @@ class APIBlock(Block):
                 self.register_input(key, data_type=meta.get("type", "any"), default_value=meta.get("default"))
         else:
             # Handling for structured schemas
-            for input_type in ["path", "params", "body", "headers"]:
+            for input_type in ["path", "params", "body", "headers", "auth"]: # Added "auth"
                 for key, meta in schema_inputs.get(input_type, {}).items():
                     self.register_input(
                         key, 
@@ -118,6 +119,7 @@ class APIBlock(Block):
         else:
             schema_inputs = schema.get("inputs", {})
             # Format URL with path parameters
+            path_params = {}
             try:
                 path_params = {key: self.inputs.get(key, "") for key in schema_inputs.get("path", {})}
                 url = self.url.format(**path_params)
@@ -137,6 +139,18 @@ class APIBlock(Block):
                     body[key] = val
             
             headers = {key: self.inputs.get(key) for key in schema_inputs.get("headers", {}) if self.inputs.get(key) is not None}
+
+            # --- Special handling for Twilio Basic Auth ---
+            if self.schema_key == "twilio_send_sms":
+                account_sid = path_params.get("AccountSid")
+                auth_token = self.inputs.get("AuthToken") # Get from the new 'auth' input
+                if account_sid and auth_token:
+                    auth_string = f"{account_sid}:{auth_token}"
+                    encoded_auth = base64.b64encode(auth_string.encode()).decode()
+                    headers["Authorization"] = f"Basic {encoded_auth}"
+                else:
+                    self.outputs['error'] = "Twilio AccountSid or AuthToken missing for authentication."
+                    return
 
         # --- Validation ---
         if not url or not url.strip():
